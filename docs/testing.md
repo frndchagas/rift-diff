@@ -58,12 +58,35 @@ macros. They stay in the code to fail loudly if an invariant is ever broken, and
 chased for coverage theater. Coverage is expected to trend upward, never down, with engine
 changes.
 
+## Mutation testing
+
+`bun run test:mutation` runs Stryker over `src/core.ts` and `src/diff.ts` with the vitest runner
+(937 mutants, about 100 seconds; `tsconfigFile` points at a non-existent file because Stryker's
+tsconfig preprocessor is incompatible with TypeScript 7's API, and our tsconfig needs no sandbox
+rewriting). First measured scores: 76.1% overall, 78.4% on covered code — 677 killed, 36 timed
+out, 196 survived, 28 without coverage.
+
+The raw score structurally understates this suite because the engine is adaptive: many mutants
+flip route selection (containment versus Myers, trace probe versus linear engine, which side to
+search first, fast-path guards), and every route produces a minimal, correct script — the oracle
+suites cannot distinguish them by output, only by speed. Surviving mutants triage into:
+
+- Route-equivalent mutants on dispatch and threshold lines (the largest group; expected by
+  design and not worth suppressing with in-code annotations).
+- Optimization-guard mutants (binary prefix/suffix fast checks, identity short-circuits) whose
+  removal changes cost, never output.
+- Defensive invariant guards, the same unreachable `throw` paths excluded from branch coverage.
+- A small tail of deep linear-engine edge positions; semantically meaningful mutants on those
+  same lines (comparison direction, off-by-one bounds) are all killed.
+
+Policy: the mutation score must not decline; any new surviving mutant on a semantic line —
+comparison direction, bounds arithmetic, range emission — is a test gap to close before the
+change lands. Route-equivalent survivors are acceptable and documented here instead of silenced.
+
 ## Next layers
 
-- Mutation testing as the suite-of-the-suite check (Martin's recommended sidecar): verify that
-  seeded faults in `core.ts` actually fail tests. Planned as its own iteration with Stryker.
-- Sequence scenarios in the benchmark harness so array and typed-array paths get performance
-  coverage as well as correctness coverage.
+- Sequence scenarios in the benchmark harness now provide performance coverage for arrays and
+  typed arrays; correctness coverage lives in the property and unicode suites.
 
 ## Sources
 

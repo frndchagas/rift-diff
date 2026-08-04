@@ -229,6 +229,45 @@ describe('diffRanges invariants', () => {
     }
   })
 
+  it('stays minimal when containment candidates straddle the trimmed middle', () => {
+    const random = createRandom(0xc0dec)
+
+    for (let round = 0; round < 800; round += 1) {
+      const prefix = randomString(random, 4)
+      const suffix = randomString(random, 4)
+      const shortCore = randomString(random, 5)
+      const longCore = randomString(random, 5) + shortCore + randomString(random, 5)
+      const flip = round % 2 === 0
+      const before = flip ? prefix + shortCore + suffix : prefix + longCore + suffix
+      const after = flip ? prefix + longCore + suffix : prefix + shortCore + suffix
+      const ranges = diffRanges(before, after)
+
+      expect(reconstruct(before, after, ranges)).toBe(after)
+      expect(editDistance(ranges)).toBe(minimumInsertDeleteDistance(before, after))
+      expectRangesToBeCanonical(ranges)
+    }
+  })
+
+  it('covers every single-element match position inside the linear engine', () => {
+    const shared = 'qq'.repeat(20)
+
+    for (const core of ['Z', 'aZ', 'Za', 'aZa', 'aaa']) {
+      const before = `L${shared}${core}${shared}R`
+      const after = `X${shared}Z${shared}Y`
+      const forward = diffRanges(before, after)
+
+      expect(reconstruct(before, after, forward)).toBe(after)
+      expect(editDistance(forward)).toBe(minimumInsertDeleteDistance(before, after))
+      expectRangesToBeCanonical(forward)
+
+      const reversed = diffRanges(after, before)
+
+      expect(reconstruct(after, before, reversed)).toBe(before)
+      expect(editDistance(reversed)).toBe(minimumInsertDeleteDistance(after, before))
+      expectRangesToBeCanonical(reversed)
+    }
+  })
+
   it('remains minimal after switching to linear-space reconstruction', () => {
     const random = createRandom(0x1a2b3c4d)
 

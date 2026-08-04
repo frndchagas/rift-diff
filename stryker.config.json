@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "mutate": ["src/core.ts", "src/diff.ts"],
+  "testRunner": "vitest",
+  "tsconfigFile": "tsconfig.stryker-skip.json",
+  "disableTypeChecks": true,
+  "coverageAnalysis": "perTest",
+  "reporters": ["json", "progress"],
+  "thresholds": {
+    "high": 90,
+    "low": 80,
+    "break": null
+  },
+  "tempDirName": ".stryker-tmp",
+  "timeoutMS": 20000
+}
