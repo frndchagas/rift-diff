@@ -23,20 +23,23 @@ uses code points while the current `rift-diff` contract uses UTF-16 code units.
 
 ## Scenarios
 
-| Scenario                      | Property under test                          |
-| ----------------------------- | -------------------------------------------- |
-| Equal short text              | Equality fast path                           |
-| Single append                 | Typical interactive edit                     |
-| Middle replacement            | Prefix and suffix discovery                  |
-| Large text, small insert      | Long shared regions with a tiny edit         |
-| Dispersed replacements        | Several distant edits                        |
-| Length-imbalanced containment | One complete input embedded in the other     |
-| Repetitive shifted text       | Ambiguous matches with a small edit distance |
-| Fully different text          | Worst case for the current trace-based Myers |
-| Real code file edit           | Deterministic TypeScript refactor fixture    |
-| Real json config edit         | Deterministic config change fixture          |
-| Real log stream update        | Deterministic append-plus-amend log fixture  |
-| Real prose revision           | Deterministic paragraph edit fixture         |
+| Scenario                      | Property under test                              |
+| ----------------------------- | ------------------------------------------------ |
+| Equal short text              | Equality fast path                               |
+| Single append                 | Typical interactive edit                         |
+| Middle replacement            | Prefix and suffix discovery                      |
+| Large text, small insert      | Long shared regions with a tiny edit             |
+| Dispersed replacements        | Several distant edits                            |
+| Length-imbalanced containment | One complete input embedded in the other         |
+| Repetitive shifted text       | Ambiguous matches with a small edit distance     |
+| Fully different text          | Worst case for the current trace-based Myers     |
+| Real code file edit           | Deterministic TypeScript refactor fixture        |
+| Real json config edit         | Deterministic config change fixture              |
+| Real log stream update        | Deterministic append-plus-amend log fixture      |
+| Real prose revision           | Deterministic paragraph edit fixture             |
+| Array of code lines           | Line-tokenized diff over the code fixture        |
+| Array of number tokens        | Dispersed numeric edits through the generic path |
+| Typed array with sparse edits | Uint32Array support and typed-array slicing      |
 
 The four corpus fixtures live in `bench/fixtures.ts`. All measured implementations produce
 identical minimal edit distances on them, keeping the throughput comparison free of heuristic

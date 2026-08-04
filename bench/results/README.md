@@ -27,9 +27,17 @@ Updated after every accepted iteration from the latest official run (currently `
 | Real log stream update        |                1.78M | leads 1.48×              |             2.07M | leads 1.86×                    |
 | Real prose revision           |                15.2k | leads 1.11×              |             13.3k | leads 1.25×                    |
 
+Sequence scenarios (fast-diff is string-only and does not participate; run `96f2e3dffb9f`):
+
+| Scenario                      | Node.js 26 rift-diff | Node.js 26 standing            | Bun 1.4 rift-diff | Bun 1.4 standing               |
+| ----------------------------- | -------------------: | ------------------------------ | ----------------: | ------------------------------ |
+| Array of code lines           |               291.6k | within 8% of `fast-myers-diff` |            326.9k | leads 1.31×                    |
+| Array of number tokens        |                13.4k | 2.45× behind `fast-myers-diff` |             27.5k | 1.24× behind `fast-myers-diff` |
+| Typed array with sparse edits |                29.6k | within 9% of `fast-myers-diff` |            103.0k | leads 3.26×                    |
+
 Milestone target: fastest or within 10% of the leader in every scenario. Remaining throughput
 gaps: equal short text and real code file edit on Node.js; repetitive shifted text and real json
-config edit on Bun.
+config edit on Bun; array of number tokens on both runtimes.
 
 Context for the real code gap: `fast-diff`'s lead there comes from diff-match-patch's half-match
 heuristic (verified: eight native `indexOf` searches fire during that diff), which is documented
@@ -42,6 +50,71 @@ inputs instead of materialized text. Its raw results remain available in the JSO
 
 Values are median operations per second. Higher is better. Statistical variation is reported
 separately instead of appearing as an ambiguous percentage beside throughput.
+
+## Sequence scenarios: `96f2e3dffb9f`
+
+- Date: 2026-08-04
+- Machine: Apple M4 Max, 14 logical CPUs, 36 GiB RAM
+- System: macOS 26.5, arm64
+- Runtimes: Bun 1.4.0 and Node.js 26.0.0
+- Throughput profile: standard, three isolated processes per cell, seven samples × 50 ms per
+  process
+- Memory profile: five fresh processes per cell
+- Baseline: the contiguous trace report below (text rows only; sequence rows are new)
+
+This is a benchmark-surface change: the harness now measures executable cells, letting scenario
+families with different competitor support share the pipeline. Three deterministic sequence
+scenarios join the matrix: the code corpus split into line arrays (63 vs 76 lines, distance 21),
+2,000 dispersed number tokens (distance 40), and a 4,000-element Uint32Array with ten sparse
+edits (distance 20). All supporting implementations produce identical minimal distances, and
+every sequence cell is verified element-by-element before timing. `jsdiff` participates through
+`diffArrays`, which cannot take typed arrays, so that cell prints as `—`. The twelve text rows
+were remeasured in the same runs and stayed inside the drift floor on both runtimes; one
+unrelated cell per runtime crossed 5% RSD (`fast-myers-diff` single append on Bun, `rift-diff`
+real log on Node.js).
+
+### Bun 1.4.0 — sequence throughput, materialized output
+
+| Scenario                      | rift-diff | fast-myers-diff now | jsdiff diffArrays now |
+| ----------------------------- | --------: | ------------------: | --------------------: |
+| Array of code lines           |    326.9k |              249.1k |                 34.1k |
+| Array of number tokens        |     27.5k |               34.2k |                 10.3k |
+| Typed array with sparse edits |    103.0k |               31.6k |                     — |
+
+Sequence range API: code lines 344.4k · number tokens 29.3k · typed array 129.2k.
+
+Sequence incremental peak RSS (empty worker in the raw report): code lines 272 KiB vs 336 KiB
+(`fast-myers-diff`) vs 416 KiB (`jsdiff`); number tokens 1.80 MiB vs 1.80 MiB vs 832 KiB; typed
+array 672 KiB vs 2.02 MiB vs —.
+
+Raw data: [sequence-scenarios-macos-arm64-bun.json](sequence-scenarios-macos-arm64-bun.json)
+
+### Node.js 26.0.0 — sequence throughput, materialized output
+
+| Scenario                      | rift-diff | fast-myers-diff now | jsdiff diffArrays now |
+| ----------------------------- | --------: | ------------------: | --------------------: |
+| Array of code lines           |    291.6k |              315.0k |                 32.0k |
+| Array of number tokens        |     13.4k |               32.9k |                  9.3k |
+| Typed array with sparse edits |     29.6k |               32.5k |                     — |
+
+Sequence range API: code lines 311.7k · number tokens 13.9k · typed array 33.8k.
+
+Sequence incremental peak RSS: code lines 352 KiB vs 304 KiB vs 384 KiB; number tokens 544 KiB
+vs 544 KiB vs 1.14 MiB; typed array 336 KiB vs 400 KiB vs —.
+
+Raw data: [sequence-scenarios-macos-arm64-node.json](sequence-scenarios-macos-arm64-node.json)
+
+### Interpretation
+
+- `rift-diff` leads typed arrays by 3.26× on Bun and sits within 9% of `fast-myers-diff` on
+  Node.js, and leads code-line arrays by 1.31× on Bun while sitting within 8% on Node.js.
+- Array of number tokens is the new largest gap: 2.45× behind `fast-myers-diff` on Node.js
+  (13.4k vs 32.9k) and 1.24× behind on Bun. The same engine runs 2× faster on Bun than on
+  Node.js in that cell, pointing at the generic element path — the default `Object.is` equality
+  closure over V8 number elements — rather than the algorithm, since the string scenarios with
+  identical shapes lead on both runtimes. This is the next kernel investigation.
+- Sequence memory stays at or below the incumbents in five of six comparable cells; number
+  tokens ties `fast-myers-diff` on both runtimes.
 
 ## Contiguous trace buffer: `8384641a7f1a`
 
