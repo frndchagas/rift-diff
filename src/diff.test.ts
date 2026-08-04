@@ -40,6 +40,23 @@ describe('diff', () => {
       { operation: INSERT, value: 'x' },
       { operation: EQUAL, value: 'c' },
     ])
+    expect(diff('xxabczz', 'abc')).toEqual([
+      { operation: DELETE, value: 'xx' },
+      { operation: EQUAL, value: 'abc' },
+      { operation: DELETE, value: 'zz' },
+    ])
+    expect(diff('abc', 'xxabczz')).toEqual([
+      { operation: INSERT, value: 'xx' },
+      { operation: EQUAL, value: 'abc' },
+      { operation: INSERT, value: 'zz' },
+    ])
+    expect(diff('prefixABCsuffix', 'prefixXABCYsuffix')).toEqual([
+      { operation: EQUAL, value: 'prefix' },
+      { operation: INSERT, value: 'X' },
+      { operation: EQUAL, value: 'ABC' },
+      { operation: INSERT, value: 'Y' },
+      { operation: EQUAL, value: 'suffix' },
+    ])
   })
 
   it('supports generic arrays and custom equality', () => {
@@ -58,6 +75,7 @@ describe('diff', () => {
     expect(() => diff('', 'abc', { maxEditDistance: 2 })).toThrow(DiffLimitError)
     expect(() => diff('abc', '', { maxEditDistance: 2 })).toThrow(DiffLimitError)
     expect(() => diff('a', 'b', { maxEditDistance: 1 })).toThrow(DiffLimitError)
+    expect(() => diff('abc', 'xxabczz', { maxEditDistance: 3 })).toThrow(DiffLimitError)
     expect(() => diff<number, number[]>([], [1, 2, 3], { maxEditDistance: 2 })).toThrow(
       DiffLimitError,
     )

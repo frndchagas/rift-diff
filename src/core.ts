@@ -113,24 +113,36 @@ function diffStringRanges(
     ranges.push(createRange(EQUAL, 0, prefixLength, 0, prefixLength))
   }
 
-  if (beforeMiddleLength === 1 && afterMiddleLength === 1) {
-    assertDistanceWithinLimit(2, maxEditDistance)
-    ranges.push(
-      createRange(DELETE, prefixLength, beforeMiddleEnd, prefixLength, prefixLength),
-      createRange(INSERT, beforeMiddleEnd, beforeMiddleEnd, prefixLength, afterMiddleEnd),
-    )
-  } else {
-    appendMiddleRanges(
+  if (
+    !appendStringContainmentRanges(
       ranges,
       before,
       after,
       prefixLength,
       beforeMiddleEnd,
-      prefixLength,
       afterMiddleEnd,
-      strictEqual,
       maxEditDistance,
     )
+  ) {
+    if (beforeMiddleLength === 1 && afterMiddleLength === 1) {
+      assertDistanceWithinLimit(2, maxEditDistance)
+      ranges.push(
+        createRange(DELETE, prefixLength, beforeMiddleEnd, prefixLength, prefixLength),
+        createRange(INSERT, beforeMiddleEnd, beforeMiddleEnd, prefixLength, afterMiddleEnd),
+      )
+    } else {
+      appendMiddleRanges(
+        ranges,
+        before,
+        after,
+        prefixLength,
+        beforeMiddleEnd,
+        prefixLength,
+        afterMiddleEnd,
+        strictEqual,
+        maxEditDistance,
+      )
+    }
   }
 
   if (suffixLength > 0) {
@@ -138,6 +150,73 @@ function diffStringRanges(
   }
 
   return ranges
+}
+
+function appendStringContainmentRanges(
+  ranges: MutableDiffRange[],
+  before: string,
+  after: string,
+  middleStart: number,
+  beforeMiddleEnd: number,
+  afterMiddleEnd: number,
+  maxEditDistance: number | undefined,
+): boolean {
+  const beforeMiddleLength = beforeMiddleEnd - middleStart
+  const afterMiddleLength = afterMiddleEnd - middleStart
+
+  if (
+    beforeMiddleLength === 0 ||
+    afterMiddleLength === 0 ||
+    beforeMiddleLength === afterMiddleLength
+  ) {
+    return false
+  }
+
+  if (beforeMiddleLength < afterMiddleLength) {
+    const containedValue = before.substring(middleStart, beforeMiddleEnd)
+    const matchStart = after.indexOf(containedValue, middleStart)
+    const matchEnd = matchStart + beforeMiddleLength
+
+    if (matchStart < middleStart || matchEnd > afterMiddleEnd) {
+      return false
+    }
+
+    assertDistanceWithinLimit(afterMiddleLength - beforeMiddleLength, maxEditDistance)
+
+    if (matchStart > middleStart) {
+      ranges.push(createRange(INSERT, middleStart, middleStart, middleStart, matchStart))
+    }
+
+    ranges.push(createRange(EQUAL, middleStart, beforeMiddleEnd, matchStart, matchEnd))
+
+    if (matchEnd < afterMiddleEnd) {
+      ranges.push(createRange(INSERT, beforeMiddleEnd, beforeMiddleEnd, matchEnd, afterMiddleEnd))
+    }
+
+    return true
+  }
+
+  const containedValue = after.substring(middleStart, afterMiddleEnd)
+  const matchStart = before.indexOf(containedValue, middleStart)
+  const matchEnd = matchStart + afterMiddleLength
+
+  if (matchStart < middleStart || matchEnd > beforeMiddleEnd) {
+    return false
+  }
+
+  assertDistanceWithinLimit(beforeMiddleLength - afterMiddleLength, maxEditDistance)
+
+  if (matchStart > middleStart) {
+    ranges.push(createRange(DELETE, middleStart, matchStart, middleStart, middleStart))
+  }
+
+  ranges.push(createRange(EQUAL, matchStart, matchEnd, middleStart, afterMiddleEnd))
+
+  if (matchEnd < beforeMiddleEnd) {
+    ranges.push(createRange(DELETE, matchEnd, beforeMiddleEnd, afterMiddleEnd, afterMiddleEnd))
+  }
+
+  return true
 }
 
 function calculateMyersRanges<Element>(
