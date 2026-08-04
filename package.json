@@ -50,6 +50,8 @@
     "validate": "bun run lint && bun run typecheck && bun run test && bun run format:check",
     "bench": "bun run bench:bun",
     "bench:bun": "bun run ./bench/benchmark.ts",
+    "bench:memory:bun": "bun run ./bench/memory-stress.ts",
+    "bench:memory:node": "bun build ./bench/memory-stress.ts --outfile ./.bench/memory-stress.mjs --target node --format esm && node ./.bench/memory-stress.mjs",
     "bench:node": "bun build ./bench/benchmark.ts --outfile ./.bench/benchmark.mjs --target node --format esm && node ./.bench/benchmark.mjs",
     "prepublishOnly": "bun run validate && bun run build"
   },
