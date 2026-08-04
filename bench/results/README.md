@@ -12,6 +12,59 @@ inputs instead of materialized text. Its raw results remain available in the JSO
 Values are median operations per second. Higher is better. Statistical variation is reported
 separately instead of appearing as an ambiguous percentage beside throughput.
 
+## Memory baseline: `95e0897284c4`
+
+Memory values are the median peak resident set size above an empty worker with the same runtime,
+imports, and fixtures. Five fresh processes are measured for each cell. Lower is better;
+`≤ control` means no increase above the empty-worker median was measurable.
+
+This is process-level incremental RSS, not a claim about exact JavaScript heap allocations.
+
+### Bun 1.4.0
+
+Empty-worker peak: 29.70 MiB.
+
+| Scenario                      | rift-diff | fast-diff | fast-myers-diff |    jsdiff |
+| ----------------------------- | --------: | --------: | --------------: | --------: |
+| Equal short text              |    48 KiB |    48 KiB |         240 KiB |   272 KiB |
+| Single append                 |    96 KiB |    96 KiB |         336 KiB |   240 KiB |
+| Middle replacement            |    80 KiB |    96 KiB |         672 KiB |  1.31 MiB |
+| Large text, small insert      |   160 KiB |   160 KiB |         784 KiB |  5.69 MiB |
+| Dispersed replacements        |  4.89 MiB |  3.44 MiB |        4.17 MiB |  3.95 MiB |
+| Length-imbalanced containment |    96 KiB |   112 KiB |        6.30 MiB |  9.33 MiB |
+| Repetitive shifted text       |  2.72 MiB |  4.44 MiB |         848 KiB |  2.67 MiB |
+| Fully different text          |  9.84 MiB |  4.27 MiB |        7.83 MiB | 18.13 MiB |
+
+Raw data: [memory-baseline-macos-arm64-bun.json](memory-baseline-macos-arm64-bun.json)
+
+### Node.js 26.0.0
+
+Empty-worker peak: 49.06 MiB.
+
+| Scenario                      | rift-diff | fast-diff | fast-myers-diff |    jsdiff |
+| ----------------------------- | --------: | --------: | --------------: | --------: |
+| Equal short text              |   160 KiB | ≤ control |         144 KiB | ≤ control |
+| Single append                 |   112 KiB |   240 KiB |       ≤ control |    80 KiB |
+| Middle replacement            | ≤ control |    16 KiB |       ≤ control |   320 KiB |
+| Large text, small insert      |    80 KiB |    48 KiB |         304 KiB |  4.61 MiB |
+| Dispersed replacements        |  1.80 MiB |  1.02 MiB |         112 KiB |  3.94 MiB |
+| Length-imbalanced containment |    32 KiB | ≤ control |        2.55 MiB |  2.11 MiB |
+| Repetitive shifted text       |   224 KiB |   976 KiB |         176 KiB |   384 KiB |
+| Fully different text          |  7.14 MiB |  1.80 MiB |        2.67 MiB |  6.97 MiB |
+
+Raw data: [memory-baseline-macos-arm64-node.json](memory-baseline-macos-arm64-node.json)
+
+### Memory interpretation
+
+- Fully different text is the clearest memory problem: `rift-diff` uses 9.84 MiB incrementally on
+  Bun and 7.14 MiB on Node.js for inputs of only 300 code units each.
+- Dispersed replacements are the second pressure point, at 4.89 MiB on Bun and 1.80 MiB on Node.js.
+- Fast paths for local edits and containment remain close to the empty-worker baseline.
+- Range-only fully different results are nearly identical to materialized results, confirming that
+  the retained Myers trace, not output slicing, dominates this workload.
+- No engine code changed in this benchmark commit. Throughput was remeasured in the raw reports but
+  its small deltas are run-to-run variation, not performance claims.
+
 ## Containment fast path: `d3c7c5f433d7`
 
 - Date: 2026-08-04
