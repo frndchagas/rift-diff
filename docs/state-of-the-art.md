@@ -81,6 +81,18 @@ either pays about 1.8× on comparison scans or silently drops `NaN` correctness 
 an explicit `equals` escape hatch, and this fully explains the number-token scenario running 2×
 faster on Bun than on Node.js with identical code.
 
+The Bun repetitive-shift gap decomposes into a JavaScriptCore per-character floor. Isolated
+bisection of a faithful standalone copy of the trace loop refuted, in order: typed-array
+allocation cost (JSC is faster than V8 there), rope traversal (pre-flattened strings change
+nothing), parameter-versus-module-constant strings (identical), and the per-operation equality
+closure (inlining `charCodeAt` recovers only about 12%). What remains is the loop shape itself:
+inside the diagonal loop with interleaved typed-array frontier accesses, JSC executes snake scans
+at roughly 2 ns per character where V8 runs the same code at about 0.9 ns. At that floor,
+`fast-myers-diff`'s bidirectional overlap search — which touches about half the characters for
+small distances — wins on Bun (1.5×) while losing to our unidirectional probe on Node.js (2.3×).
+Closing the Bun cell would require a bidirectional small-distance probe, a medium-risk algorithmic
+change whose benefit is runtime-specific.
+
 On the real code corpus scenario, `fast-diff`'s Node.js lead was traced to diff-match-patch's
 half-match stage, verified empirically: eight `String.prototype.indexOf` calls fire during that
 single diff, splitting the problem around a long common substring through the runtime's native

@@ -14,23 +14,23 @@ baseline). Materialized output, median ops/s; the leader varies by scenario. `le
 means `rift-diff` is the fastest measured implementation in that cell. This table supersedes all
 pre-anchoring tables.
 
-| Scenario                      | Node.js 26 rift-diff | Node.js standing               | Bun 1.4 rift-diff | Bun standing                   |
-| ----------------------------- | -------------------: | ------------------------------ | ----------------: | ------------------------------ |
-| Equal short text              |              143.86M | parity with `fast-diff` (0.7%) |           121.38M | leads 1.05×                    |
-| Single append                 |               19.85M | leads 2.02×                    |            17.71M | leads 1.95×                    |
-| Middle replacement            |                2.36M | leads 1.24×                    |             2.25M | leads 1.57×                    |
-| Large text, small insert      |                1.50M | leads 1.15×                    |             1.42M | leads 1.56×                    |
-| Dispersed replacements        |               107.0k | leads 4.85×                    |             41.0k | leads 1.52×                    |
-| Length-imbalanced containment |               11.27M | leads 1.41×                    |             6.95M | leads 1.44×                    |
-| Repetitive shifted text       |               473.9k | leads 2.27×                    |            178.8k | 1.53× behind `fast-myers-diff` |
-| Fully different text          |                 2.7k | leads 1.18×                    |              3.3k | leads 1.68×                    |
-| Real code file edit           |                 2.4k | 1.32× behind `fast-diff`       |              3.2k | leads 1.70×                    |
-| Real json config edit         |                28.8k | leads 1.19×                    |             21.6k | 1.27× behind `fast-myers-diff` |
-| Real log stream update        |                1.76M | leads 1.49×                    |             1.70M | leads 1.72×                    |
-| Real prose revision           |                15.0k | leads 1.12×                    |             13.1k | leads 1.25×                    |
-| Array of code lines           |               436.3k | within 8% of `fast-myers-diff` |            473.6k | leads 1.27×                    |
-| Array of number tokens        |                21.0k | 2.31× behind `fast-myers-diff` |             40.9k | 1.28× behind `fast-myers-diff` |
-| Typed array with sparse edits |                48.3k | within 6% of `fast-myers-diff` |            153.3k | leads 3.30×                    |
+| Scenario                      | Node.js 26 rift-diff | Node.js standing               | Bun 1.4 rift-diff | Bun standing                       |
+| ----------------------------- | -------------------: | ------------------------------ | ----------------: | ---------------------------------- |
+| Equal short text              |              143.86M | parity with `fast-diff` (0.7%) |           121.38M | leads 1.05×                        |
+| Single append                 |               19.85M | leads 2.02×                    |            17.71M | leads 1.95×                        |
+| Middle replacement            |                2.36M | leads 1.24×                    |             2.25M | leads 1.57×                        |
+| Large text, small insert      |                1.50M | leads 1.15×                    |             1.42M | leads 1.56×                        |
+| Dispersed replacements        |               107.0k | leads 4.85×                    |             41.0k | leads 1.52×                        |
+| Length-imbalanced containment |               11.27M | leads 1.41×                    |             6.95M | leads 1.44×                        |
+| Repetitive shifted text       |               473.9k | leads 2.27×                    |            178.8k | 1.53× behind, JSC floor (see docs) |
+| Fully different text          |                 2.7k | leads 1.18×                    |              3.3k | leads 1.68×                        |
+| Real code file edit           |                 2.4k | 1.32× behind `fast-diff`       |              3.2k | leads 1.70×                        |
+| Real json config edit         |                28.8k | leads 1.19×                    |             21.6k | 1.27× behind `fast-myers-diff`     |
+| Real log stream update        |                1.76M | leads 1.49×                    |             1.70M | leads 1.72×                        |
+| Real prose revision           |                15.0k | leads 1.12×                    |             13.1k | leads 1.25×                        |
+| Array of code lines           |               436.3k | within 8% of `fast-myers-diff` |            473.6k | leads 1.27×                        |
+| Array of number tokens        |                21.0k | 2.31× behind `fast-myers-diff` |             40.9k | 1.28× behind `fast-myers-diff`     |
+| Typed array with sparse edits |                48.3k | within 6% of `fast-myers-diff` |            153.3k | leads 3.30×                        |
 
 Milestone target: fastest or within 10% of the leader in every scenario. Open Node.js cells:
 real code file edit (1.32×, half-match contract tradeoff) and array of number tokens (2.31×,

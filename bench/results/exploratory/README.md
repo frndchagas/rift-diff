@@ -92,3 +92,18 @@ A CPU profile of the number-token worker put 40.2% of self time in the equality 
 scenario matches the observed 2× Node-versus-Bun throughput difference for identical code, so the
 number-token gap decomposes into the recorded `Object.is` contract cost on V8 plus the known
 probe-abort overhead for distances just above the probe limit.
+
+## Bun repetitive-shift bisection (`cf67dc6` era)
+
+- Date: 2026-08-04, Bun 1.4.0 and Node.js 26.0.0, same machine as above
+
+A faithful standalone copy of the trace loop reproduced the real cell cost on Bun (5,331 versus
+5,406 ns/op), enabling variant bisection. Median ns/op on Bun, isolated processes, five
+order-alternated repetitions: closure equality 5,379; inline `charCodeAt` 4,708; pre-flattened
+strings 4,697; module-constant strings 4,646. Component microbenchmarks: typed allocation 159 ns
+on Bun versus 309 ns on Node.js; straight-line snake scans 1,395 versus 1,453 ns. Conclusion:
+no allocation, rope, or closure cause — JSC runs snake scans inside the diagonal-loop shape at
+about 2 ns per character versus 0.9 ns on V8, which fully accounts for the runtime split of this
+scenario (rift-diff 2.3× ahead on Node.js, 1.5× behind on Bun against the bidirectional
+`fast-myers-diff`). The JSC sampling profiler could not be used: `BUN_JSC_useSamplingProfiler`
+crashes the current Bun canary with a segfault after worker completion.
