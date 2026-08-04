@@ -107,3 +107,18 @@ about 2 ns per character versus 0.9 ns on V8, which fully accounts for the runti
 scenario (rift-diff 2.3× ahead on Node.js, 1.5× behind on Bun against the bidirectional
 `fast-myers-diff`). The JSC sampling profiler could not be used: `BUN_JSC_useSamplingProfiler`
 crashes the current Bun canary with a segfault after worker completion.
+
+## Probe-limit policy measurements (`71d7ff510732` era)
+
+- Date: 2026-08-04, Node.js 26.0.0 and Bun 1.4.0, same machine as above
+
+Dedicated nine-repetition Bun measurement of real-json confirmed its gap as real (rift 22.2k,
+`fast-myers-diff` 28.8k, spreads under 6%) and measured the probe-free variant
+(`TRACE_DISTANCE_LIMIT = 0`) at 45.2k — double the current cell and 1.57× ahead of the leader,
+because at distance 94 the probe burns its full 33 layers at JavaScriptCore's ~2 ns/char floor
+before the linear engine starts over. A probe limit of 20 measured +0.9% to +7.8% across
+repetitive, dispersed, mid-distance, and real-json on both runtimes with no losses. The limit
+change is deferred until the matrix contains a large-middle scenario inside the 21-32 band, which
+is exactly the case a lower limit would push onto the linear engine. Reusing the probe's final
+forward frontier to seed the first bidirectional split is recorded as the structural direction
+that would capture the full probe-free gain without sacrificing small-distance scenarios.

@@ -60,6 +60,18 @@ Context for the number-token gap: incumbents compare elements with `===`, which 
 equal-position `NaN`s as edits; `rift-diff` defaults to `Object.is`, recorded as a contract
 decision in RFC 0001 with an explicit escape hatch.
 
+## Mid-distance scenario: `71d7ff510732`
+
+A sixteenth scenario joins the matrix: two clustered insertions at edit distance 25 over 1,800
+code units, covering the 21-32 distance band that exercises the trace probe's upper reach.
+`rift-diff` leads it on both runtimes (Node.js 1.46M ops/s, 1.19× over `fast-diff`; Bun 1.40M,
+1.40×). The band exists to guard probe-limit policy: dedicated measurements recorded in
+[exploratory/](exploratory/README.md) show a lower probe limit gains 0.9-7.8% everywhere today,
+and that skipping the probe entirely doubles Bun's real-json cell, but changing the policy waits
+for a large-middle scenario inside this band so the tradeoff is benchmarked rather than assumed.
+Raw data: [mid-distance-macos-arm64-node.json](mid-distance-macos-arm64-node.json),
+[mid-distance-macos-arm64-bun.json](mid-distance-macos-arm64-bun.json)
+
 ## Anchored baseline: `a697662296d5` / `36327602feed`
 
 - Date: 2026-08-04
