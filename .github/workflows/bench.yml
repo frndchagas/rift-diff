@@ -1,0 +1,35 @@
+name: Informative benchmarks
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu-benchmarks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+      - run: bun install --frozen-lockfile
+      - run: mkdir -p /tmp/bench-artifacts
+      - name: Bun throughput and memory matrix
+        run: bun run bench:bun -- --profile standard --label ubuntu-informative --output /tmp/bench-artifacts/ubuntu-x86_64-bun.json
+      - name: Node throughput and memory matrix
+        run: bun run bench:node -- --profile standard --label ubuntu-informative --output /tmp/bench-artifacts/ubuntu-x86_64-node.json
+      - name: Bun scaled memory stress
+        run: bun run bench:memory:bun -- --label ubuntu-informative-memory-stress --output /tmp/bench-artifacts/ubuntu-x86_64-memory-stress-bun.json
+      - name: Node scaled memory stress
+        run: bun run bench:memory:node -- --label ubuntu-informative-memory-stress --output /tmp/bench-artifacts/ubuntu-x86_64-memory-stress-node.json
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ubuntu-x86_64-benchmarks
+          path: /tmp/bench-artifacts/
+          retention-days: 30
