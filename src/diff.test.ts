@@ -161,6 +161,62 @@ describe('diffRanges invariants', () => {
     expectRangesToBeCanonical(numberRanges)
   })
 
+  it('diffs typed arrays with exact reconstruction and minimal distance', () => {
+    const beforeBytes = Uint8Array.from([10, 20, 30, 40, 50, 60])
+    const afterBytes = Uint8Array.from([10, 25, 30, 40, 60, 70])
+    const byteRanges = diffRanges(beforeBytes, afterBytes)
+
+    expect(reconstructSequence(beforeBytes, afterBytes, byteRanges)).toEqual([...afterBytes])
+    expect(editDistance(byteRanges)).toBe(
+      minimumSequenceDistance([...beforeBytes], [...afterBytes]),
+    )
+    expectRangesToBeCanonical(byteRanges)
+
+    const beforeInts = Int32Array.from([-5, 0, 7, 7, 9, -1, 3])
+    const afterInts = Int32Array.from([-5, 7, 7, 2, 9, 3])
+    const intRanges = diffRanges(beforeInts, afterInts)
+
+    expect(reconstructSequence(beforeInts, afterInts, intRanges)).toEqual([...afterInts])
+    expect(editDistance(intRanges)).toBe(minimumSequenceDistance([...beforeInts], [...afterInts]))
+    expectRangesToBeCanonical(intRanges)
+
+    expect(diff(Uint8Array.from([1, 2, 3]), Uint8Array.from([1, 9, 3]))).toEqual([
+      { operation: EQUAL, value: Uint8Array.from([1]) },
+      { operation: DELETE, value: Uint8Array.from([2]) },
+      { operation: INSERT, value: Uint8Array.from([9]) },
+      { operation: EQUAL, value: Uint8Array.from([3]) },
+    ])
+  })
+
+  it('applies Object.is semantics to NaN and signed zero in float arrays', () => {
+    const withNaN = Float64Array.from([1, Number.NaN, 3])
+    expect(diffRanges(Float64Array.from([1, Number.NaN, 3]), withNaN)).toEqual([
+      { operation: EQUAL, beforeStart: 0, beforeEnd: 3, afterStart: 0, afterEnd: 3 },
+    ])
+
+    const zeroRanges = diffRanges(Float64Array.from([-0]), Float64Array.from([0]))
+    expect(editDistance(zeroRanges)).toBe(2)
+    expect(
+      diffRanges(Float64Array.from([-0]), Float64Array.from([0]), {
+        equals: (left, right) => left === right,
+      }),
+    ).toEqual([{ operation: EQUAL, beforeStart: 0, beforeEnd: 1, afterStart: 0, afterEnd: 1 }])
+  })
+
+  it('keeps random number arrays minimal against the oracle', () => {
+    const random = createRandom(0xa11ce)
+
+    for (let index = 0; index < 1_500; index += 1) {
+      const before = randomNumberArray(random, 40)
+      const after = randomNumberArray(random, 40)
+      const ranges = diffRanges(before, after)
+
+      expect(reconstructSequence(before, after, ranges)).toEqual(after)
+      expect(editDistance(ranges)).toBe(minimumSequenceDistance(before, after))
+      expectRangesToBeCanonical(ranges)
+    }
+  })
+
   it('remains minimal after switching to linear-space reconstruction', () => {
     const random = createRandom(0x1a2b3c4d)
 
@@ -276,6 +332,64 @@ function minimumInsertDeleteDistance(before: string, after: string): number {
   }
 
   return previous[after.length] ?? 0
+}
+
+interface ReadonlyIndexable<Element> {
+  readonly length: number
+  readonly [index: number]: Element
+}
+
+function reconstructSequence<Element>(
+  before: ReadonlyIndexable<Element>,
+  after: ReadonlyIndexable<Element>,
+  ranges: ReturnType<typeof diffRanges<Element>>,
+): Element[] {
+  const rebuilt: Element[] = []
+
+  for (const range of ranges) {
+    if (range.operation === DELETE) {
+      continue
+    }
+
+    if (range.operation === INSERT) {
+      for (let index = range.afterStart; index < range.afterEnd; index += 1) {
+        rebuilt.push(after[index]!)
+      }
+    } else {
+      for (let index = range.beforeStart; index < range.beforeEnd; index += 1) {
+        rebuilt.push(before[index]!)
+      }
+    }
+  }
+
+  return rebuilt
+}
+
+function minimumSequenceDistance<Element>(
+  before: readonly Element[],
+  after: readonly Element[],
+): number {
+  const previous = Array.from({ length: after.length + 1 }, (_, index) => index)
+
+  for (let beforeIndex = 1; beforeIndex <= before.length; beforeIndex += 1) {
+    const current = [beforeIndex]
+
+    for (let afterIndex = 1; afterIndex <= after.length; afterIndex += 1) {
+      current[afterIndex] = Object.is(before[beforeIndex - 1], after[afterIndex - 1])
+        ? (previous[afterIndex - 1] ?? 0)
+        : Math.min((previous[afterIndex] ?? 0) + 1, (current[afterIndex - 1] ?? 0) + 1)
+    }
+
+    previous.splice(0, previous.length, ...current)
+  }
+
+  return previous[after.length] ?? 0
+}
+
+function randomNumberArray(random: () => number, maximumLength: number): number[] {
+  const length = Math.floor(random() * (maximumLength + 1))
+
+  return Array.from({ length }, () => Math.floor(random() * 6))
 }
 
 function createRandom(seed: number): () => number {
