@@ -33,6 +33,14 @@ uses code points while the current `rift-diff` contract uses UTF-16 code units.
 | Length-imbalanced containment | One complete input embedded in the other     |
 | Repetitive shifted text       | Ambiguous matches with a small edit distance |
 | Fully different text          | Worst case for the current trace-based Myers |
+| Real code file edit           | Deterministic TypeScript refactor fixture    |
+| Real json config edit         | Deterministic config change fixture          |
+| Real log stream update        | Deterministic append-plus-amend log fixture  |
+| Real prose revision           | Deterministic paragraph edit fixture         |
+
+The four corpus fixtures live in `bench/fixtures.ts`. All measured implementations produce
+identical minimal edit distances on them, keeping the throughput comparison free of heuristic
+semantics differences.
 
 ## Procedure
 

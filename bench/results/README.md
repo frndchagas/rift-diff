@@ -8,29 +8,130 @@ between them. Every incumbent is measured again in the same run as `Rift now`.
 
 ## Distance to the leader
 
-Updated after every accepted iteration from the latest official run (currently `80c77fa95591`,
+Updated after every accepted iteration from the latest official run (currently `8dd95682e69b`,
 2026-08-04). Materialized output, median ops/s; the leader varies by scenario. `leads` means
 `rift-diff` is the fastest measured implementation in that cell.
 
 | Scenario                      | Node.js 26 rift-diff | Node.js 26 standing      | Bun 1.4 rift-diff | Bun 1.4 standing               |
 | ----------------------------- | -------------------: | ------------------------ | ----------------: | ------------------------------ |
-| Equal short text              |               88.96M | 1.20× behind `fast-diff` |           120.16M | within 1% of `fast-diff`       |
-| Single append                 |               19.36M | leads 1.85×              |            20.50M | leads 1.79×                    |
-| Middle replacement            |                2.35M | leads 1.21×              |             2.47M | leads 1.51×                    |
-| Large text, small insert      |                1.50M | leads 1.12×              |             1.59M | leads 1.22×                    |
-| Dispersed replacements        |                90.2k | leads 3.94×              |             42.8k | leads 1.57×                    |
-| Length-imbalanced containment |               11.77M | leads 1.50×              |            10.43M | leads 1.48×                    |
-| Repetitive shifted text       |               434.0k | leads 2.09×              |            187.0k | 1.47× behind `fast-myers-diff` |
-| Fully different text          |                 2.7k | leads 1.17×              |              3.2k | leads 1.68×                    |
+| Equal short text              |               90.25M | 1.22× behind `fast-diff` |           119.97M | leads 1.01×                    |
+| Single append                 |               19.76M | leads 1.87×              |            21.53M | leads 1.89×                    |
+| Middle replacement            |                2.37M | leads 1.21×              |             2.47M | leads 1.52×                    |
+| Large text, small insert      |                1.52M | leads 1.12×              |             1.58M | leads 1.21×                    |
+| Dispersed replacements        |                92.0k | leads 3.95×              |             41.7k | leads 1.53×                    |
+| Length-imbalanced containment |               12.02M | leads 1.50×              |            10.33M | leads 1.47×                    |
+| Repetitive shifted text       |               436.3k | leads 2.05×              |            178.3k | 1.55× behind `fast-myers-diff` |
+| Fully different text          |                 2.7k | leads 1.17×              |              3.3k | leads 1.74×                    |
+| Real code file edit           |                 2.4k | 1.33× behind `fast-diff` |              3.4k | leads 1.79×                    |
+| Real json config edit         |                25.7k | leads 1.04×              |             21.4k | 1.29× behind `fast-myers-diff` |
+| Real log stream update        |                1.76M | leads 1.41×              |             2.03M | leads 1.90×                    |
+| Real prose revision           |                14.4k | leads 1.07×              |             13.2k | leads 1.27×                    |
 
 Milestone target: fastest or within 10% of the leader in every scenario. Remaining throughput
-gaps: equal short text on Node.js (17% behind) and repetitive shifted text on Bun (1.47×).
+gaps: equal short text and real code file edit on Node.js; repetitive shifted text and real json
+config edit on Bun.
 
 The low-level range API is kept out of these tables because it returns indexes into the original
 inputs instead of materialized text. Its raw results remain available in the JSON reports.
 
 Values are median operations per second. Higher is better. Statistical variation is reported
 separately instead of appearing as an ambiguous percentage beside throughput.
+
+## Real corpus scenarios: `8dd95682e69b`
+
+- Date: 2026-08-04
+- Machine: Apple M4 Max, 14 logical CPUs, 36 GiB RAM
+- System: macOS 26.5, arm64
+- Runtimes: Bun 1.4.0 and Node.js 26.0.0
+- Throughput profile: standard, three isolated processes per cell, seven samples × 50 ms per
+  process
+- Memory profile: five fresh processes per cell
+- Baseline: the analytical split clamp report below (which has no corpus rows, shown as `—`)
+
+This is a benchmark-surface change, not an engine change. Four deterministic corpus scenarios
+join the matrix: a TypeScript file edit (1,315 → 1,812 code units), a JSON config edit
+(797 → 865), a log stream update (900 → 1,157), and a prose revision (810 → 980). Every measured
+implementation produced identical minimal edit distances on all four (497, 94, 257, and 176), so
+the throughput comparison is not distorted by heuristic shortcuts. The synthetic rows double as a
+same-period remeasurement of the engine and stayed inside the drift floor.
+
+### Bun 1.4.0 throughput — materialized output
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |     120.16M |  119.97M |       -0.2% |       118.81M |               2.92M |      1.49M |
+| Single append                 |      20.50M |   21.53M |       +5.0% |        11.42M |               1.48M |     733.6k |
+| Middle replacement            |       2.47M |    2.47M |       +0.3% |         1.62M |              241.9k |      85.3k |
+| Large text, small insert      |       1.59M |    1.58M |       -0.8% |         1.31M |               19.9k |       8.0k |
+| Dispersed replacements        |       42.8k |    41.7k |       -2.7% |          5.9k |               27.2k |      15.0k |
+| Length-imbalanced containment |      10.43M |   10.33M |       -0.9% |         7.02M |                6.1k |       1.1k |
+| Repetitive shifted text       |      187.0k |   178.3k |       -4.7% |          4.2k |              276.2k |      83.1k |
+| Fully different text          |        3.2k |     3.3k |       +1.0% |           597 |                1.9k |        137 |
+| Real code file edit           |           — |     3.4k |           — |          1.3k |                1.9k |         85 |
+| Real json config edit         |           — |    21.4k |           — |         10.2k |               27.6k |       2.9k |
+| Real log stream update        |           — |    2.03M |           — |         1.07M |                7.4k |      15.8k |
+| Real prose revision           |           — |    13.2k |           — |          5.1k |               10.4k |       2.5k |
+
+Range API for the corpus rows: real code 3.4k, real json 21.5k, real log 2.20M, real prose 13.0k.
+
+Raw data: [real-corpus-macos-arm64-bun.json](real-corpus-macos-arm64-bun.json)
+
+### Node.js 26.0.0 throughput — materialized output
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |      88.96M |   90.25M |       +1.5% |       109.77M |               3.50M |     961.8k |
+| Single append                 |      19.36M |   19.76M |       +2.1% |        10.57M |               2.16M |     512.0k |
+| Middle replacement            |       2.35M |    2.37M |       +0.9% |         1.96M |              482.8k |      60.1k |
+| Large text, small insert      |       1.50M |    1.52M |       +1.4% |         1.36M |               44.9k |       5.2k |
+| Dispersed replacements        |       90.2k |    92.0k |       +2.0% |          7.5k |               23.3k |      10.4k |
+| Length-imbalanced containment |      11.77M |   12.02M |       +2.1% |         8.02M |                5.3k |       1.3k |
+| Repetitive shifted text       |      434.0k |   436.3k |       +0.5% |          4.2k |              212.8k |      56.8k |
+| Fully different text          |        2.7k |     2.7k |       -1.0% |          2.3k |                1.7k |        175 |
+| Real code file edit           |           — |     2.4k |           — |          3.2k |                1.5k |        119 |
+| Real json config edit         |           — |    25.7k |           — |         23.7k |               24.7k |       3.1k |
+| Real log stream update        |           — |    1.76M |           — |         1.25M |                6.4k |      11.8k |
+| Real prose revision           |           — |    14.4k |           — |         13.5k |                9.5k |       2.5k |
+
+Range API for the corpus rows: real code 2.5k, real json 26.2k, real log 1.93M, real prose 15.1k.
+
+Stability warning: `fast-myers-diff` fully different text measured 9.1% RSD across process
+medians on Node.js.
+
+Raw data: [real-corpus-macos-arm64-node.json](real-corpus-macos-arm64-node.json)
+
+### Incremental peak RSS — corpus scenarios
+
+#### Bun 1.4.0 (empty worker 29.75 MiB)
+
+| Scenario               | rift-diff | fast-diff | fast-myers-diff |    jsdiff |
+| ---------------------- | --------: | --------: | --------------: | --------: |
+| Real code file edit    |  7.78 MiB |  3.17 MiB |        7.77 MiB | 22.50 MiB |
+| Real json config edit  |  4.09 MiB |  2.19 MiB |        3.45 MiB |  4.12 MiB |
+| Real log stream update |    96 KiB |   112 KiB |        5.77 MiB |  3.45 MiB |
+| Real prose revision    |  6.03 MiB |  1.70 MiB |        6.98 MiB |  4.25 MiB |
+
+#### Node.js 26.0.0 (empty worker 49.11 MiB)
+
+| Scenario               | rift-diff | fast-diff | fast-myers-diff |   jsdiff |
+| ---------------------- | --------: | --------: | --------------: | -------: |
+| Real code file edit    |  4.48 MiB |  3.62 MiB |        6.88 MiB | 9.36 MiB |
+| Real json config edit  |   288 KiB |   240 KiB |         416 KiB | 1.38 MiB |
+| Real log stream update | ≤ control |   368 KiB |        2.55 MiB |  784 KiB |
+| Real prose revision    |   496 KiB |   832 KiB |        1.53 MiB | 1.48 MiB |
+
+### Interpretation
+
+- The corpus surfaced two gaps the synthetic matrix could not see: real code file edit on Node.js
+  (`fast-diff` leads 1.33×) and real json config edit on Bun (`fast-myers-diff` leads 1.29×).
+  Both enter the distance-to-the-leader table as open items.
+- Real code file edit inverts between runtimes: `rift-diff` trails `fast-diff` 1.33× on Node.js
+  while leading it 2.6× on Bun with the identical input and identical minimal output.
+- `rift-diff` leads real log stream update on both runtimes (1.41× and 1.90×) and real prose
+  revision on both (1.07× and 1.27×), and leads real json on Node.js by 1.04×.
+- Corpus memory shows `fast-diff` retaining less RSS on the mixed-edit corpus rows, consistent
+  with its half-match segmentation splitting work into smaller regions; `rift-diff` stays ahead
+  of `fast-myers-diff` and `jsdiff` in most corpus cells.
 
 ## Analytical split clamp: `80c77fa95591`
 
