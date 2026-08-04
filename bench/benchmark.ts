@@ -1065,8 +1065,12 @@ function printReport(report: BenchmarkReport, comparison: StoredBenchmarkReport 
     )
 
     for (const result of unstableResults) {
-      const benchmark = report.benchmarks.find((candidate) => candidate.id === result.benchmarkId)
-      const scenario = report.scenarios.find((candidate) => candidate.id === result.scenarioId)
+      const benchmark =
+        report.benchmarks.find((candidate) => candidate.id === result.benchmarkId) ??
+        report.sequenceBenchmarks.find((candidate) => candidate.id === result.benchmarkId)
+      const scenario =
+        report.scenarios.find((candidate) => candidate.id === result.scenarioId) ??
+        report.sequenceScenarios.find((candidate) => candidate.id === result.scenarioId)
 
       if (!benchmark || !scenario) {
         throw new Error(`Missing metadata for ${result.benchmarkId}/${result.scenarioId}`)
