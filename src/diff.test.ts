@@ -100,6 +100,54 @@ describe('diffRanges invariants', () => {
       expectRangesToBeCanonical(ranges)
     }
   })
+
+  it('remains minimal after switching to linear-space reconstruction', () => {
+    const random = createRandom(0x1a2b3c4d)
+
+    for (let index = 0; index < 1_000; index += 1) {
+      const before = randomStringWithLength(random, 33 + Math.floor(random() * 24))
+      const after = randomStringWithLength(random, 33 + Math.floor(random() * 24))
+      const ranges = diffRanges(before, after)
+
+      expect(reconstruct(before, after, ranges)).toBe(after)
+      expect(editDistance(ranges)).toBe(minimumInsertDeleteDistance(before, after))
+      expectRangesToBeCanonical(ranges)
+    }
+
+    expect(diff('a'.repeat(40), 'b'.repeat(40))).toEqual([
+      { operation: DELETE, value: 'a'.repeat(40) },
+      { operation: INSERT, value: 'b'.repeat(40) },
+    ])
+    expect(
+      diff(
+        Array.from({ length: 40 }, (_, index) => index),
+        Array.from({ length: 40 }, (_, index) => index + 40),
+      ),
+    ).toEqual([
+      { operation: DELETE, value: Array.from({ length: 40 }, (_, index) => index) },
+      { operation: INSERT, value: Array.from({ length: 40 }, (_, index) => index + 40) },
+    ])
+
+    const beforeObjects = Array.from({ length: 40 }, (_, id) => ({ id }))
+    const afterObjects = [...beforeObjects.slice(20), ...beforeObjects.slice(0, 20)].map(
+      ({ id }) => ({ id }),
+    )
+    const objectRanges = diffRanges(beforeObjects, afterObjects, {
+      equals: (before, after) => before.id === after.id,
+    })
+    const reconstructedIds = objectRanges
+      .filter((range) => range.operation !== DELETE)
+      .flatMap((range) =>
+        range.operation === INSERT
+          ? afterObjects.slice(range.afterStart, range.afterEnd)
+          : beforeObjects.slice(range.beforeStart, range.beforeEnd),
+      )
+      .map(({ id }) => id)
+
+    expect(reconstructedIds).toEqual(afterObjects.map(({ id }) => id))
+    expect(editDistance(objectRanges)).toBe(40)
+    expectRangesToBeCanonical(objectRanges)
+  })
 })
 
 function reconstruct(
@@ -182,6 +230,17 @@ function createRandom(seed: number): () => number {
 function randomString(random: () => number, maximumLength: number): string {
   const alphabet = 'abcd'
   const length = Math.floor(random() * (maximumLength + 1))
+  let value = ''
+
+  for (let index = 0; index < length; index += 1) {
+    value += alphabet[Math.floor(random() * alphabet.length)]
+  }
+
+  return value
+}
+
+function randomStringWithLength(random: () => number, length: number): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
   let value = ''
 
   for (let index = 0; index < length; index += 1) {

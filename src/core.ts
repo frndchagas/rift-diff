@@ -10,6 +10,30 @@ interface MutableDiffRange {
   afterEnd: number
 }
 
+interface DiffWorkItem {
+  readonly kind: 'diff'
+  readonly beforeStart: number
+  readonly beforeEnd: number
+  readonly afterStart: number
+  readonly afterEnd: number
+}
+
+interface RangeWorkItem {
+  readonly kind: 'range'
+  readonly range: MutableDiffRange
+}
+
+interface MyersSplit {
+  readonly beforeIndex: number
+  readonly afterIndex: number
+}
+
+type LinearWorkItem = DiffWorkItem | RangeWorkItem
+
+const TRACE_DISTANCE_LIMIT = 32
+const TRACE_WORKSPACE_LIMIT_BYTES = 1.5 * 1024 * 1024
+const TRACE_SUBPROBLEM_SIZE = 32
+
 export function diffRanges<Element>(
   before: Indexable<Element>,
   after: Indexable<Element>,
@@ -225,6 +249,66 @@ function calculateMyersRanges<Element>(
   equals: (before: Element, after: Element) => boolean,
   maxEditDistance: number | undefined,
 ): MutableDiffRange[] {
+  if (maxEditDistance !== undefined) {
+    const ranges = calculateTraceMyersRanges(
+      before,
+      after,
+      beforeStart,
+      beforeEnd,
+      afterStart,
+      afterEnd,
+      equals,
+      maxEditDistance,
+      Number.POSITIVE_INFINITY,
+      Number.POSITIVE_INFINITY,
+    )
+
+    if (!ranges) {
+      throw new Error('Bounded Myers unexpectedly exceeded an unlimited trace workspace')
+    }
+
+    return ranges
+  }
+
+  const tracedRanges = calculateTraceMyersRanges(
+    before,
+    after,
+    beforeStart,
+    beforeEnd,
+    afterStart,
+    afterEnd,
+    equals,
+    undefined,
+    TRACE_DISTANCE_LIMIT,
+    TRACE_WORKSPACE_LIMIT_BYTES,
+  )
+
+  return (
+    tracedRanges ??
+    calculateLinearSpaceMyersRanges(
+      before,
+      after,
+      beforeStart,
+      beforeEnd,
+      afterStart,
+      afterEnd,
+      equals,
+    )
+  )
+}
+
+function calculateTraceMyersRanges<Element>(
+  before: Indexable<Element>,
+  after: Indexable<Element>,
+  beforeStart: number,
+  beforeEnd: number,
+  afterStart: number,
+  afterEnd: number,
+  equals: (before: Element, after: Element) => boolean,
+  maxEditDistance: number | undefined,
+  traceDistanceLimit: number,
+  traceWorkspaceLimitBytes: number,
+): MutableDiffRange[] | undefined {
   const beforeLength = beforeEnd - beforeStart
   const afterLength = afterEnd - afterStart
   const maximumDistance = beforeLength + afterLength
@@ -237,6 +321,13 @@ function calculateMyersRanges<Element>(
   frontier[offset + 1] = 0
 
   for (let distance = 0; distance <= distanceLimit; distance += 1) {
+    if (
+      distance > traceDistanceLimit ||
+      (trace.length + 2) * frontier.byteLength > traceWorkspaceLimitBytes
+    ) {
+      return undefined
+    }
+
     trace.push(frontier.slice())
 
     for (let diagonal = -distance; diagonal <= distance; diagonal += 2) {
@@ -281,6 +372,386 @@ function calculateMyersRanges<Element>(
   }
 
   throw new DiffLimitError(distanceLimit)
+}
+
+function calculateLinearSpaceMyersRanges<Element>(
+  before: Indexable<Element>,
+  after: Indexable<Element>,
+  beforeStart: number,
+  beforeEnd: number,
+  afterStart: number,
+  afterEnd: number,
+  equals: (before: Element, after: Element) => boolean,
+): MutableDiffRange[] {
+  const ranges: MutableDiffRange[] = []
+  const work: LinearWorkItem[] = [{ kind: 'diff', beforeStart, beforeEnd, afterStart, afterEnd }]
+  const workspaceLength = beforeEnd - beforeStart + (afterEnd - afterStart) + 4
+  const forwardWorkspace = new Int32Array(workspaceLength)
+  const reverseWorkspace = new Int32Array(workspaceLength)
+
+  while (work.length > 0) {
+    const item = work.pop()
+
+    if (!item) {
+      throw new Error('Missing linear-space Myers work item')
+    }
+
+    if (item.kind === 'range') {
+      appendForwardRange(ranges, item.range)
+      continue
+    }
+
+    let middleBeforeStart = item.beforeStart
+    let middleAfterStart = item.afterStart
+    let middleBeforeEnd = item.beforeEnd
+    let middleAfterEnd = item.afterEnd
+
+    while (
+      middleBeforeStart < middleBeforeEnd &&
+      middleAfterStart < middleAfterEnd &&
+      equals(before[middleBeforeStart]!, after[middleAfterStart]!)
+    ) {
+      middleBeforeStart += 1
+      middleAfterStart += 1
+    }
+
+    if (middleBeforeStart > item.beforeStart) {
+      appendForwardRange(
+        ranges,
+        createRange(EQUAL, item.beforeStart, middleBeforeStart, item.afterStart, middleAfterStart),
+      )
+    }
+
+    while (
+      middleBeforeStart < middleBeforeEnd &&
+      middleAfterStart < middleAfterEnd &&
+      equals(before[middleBeforeEnd - 1]!, after[middleAfterEnd - 1]!)
+    ) {
+      middleBeforeEnd -= 1
+      middleAfterEnd -= 1
+    }
+
+    if (middleBeforeEnd < item.beforeEnd) {
+      work.push({
+        kind: 'range',
+        range: createRange(EQUAL, middleBeforeEnd, item.beforeEnd, middleAfterEnd, item.afterEnd),
+      })
+    }
+
+    if (middleBeforeStart === middleBeforeEnd) {
+      if (middleAfterStart < middleAfterEnd) {
+        appendForwardRange(
+          ranges,
+          createRange(
+            INSERT,
+            middleBeforeStart,
+            middleBeforeStart,
+            middleAfterStart,
+            middleAfterEnd,
+          ),
+        )
+      }
+      continue
+    }
+
+    if (middleAfterStart === middleAfterEnd) {
+      appendForwardRange(
+        ranges,
+        createRange(DELETE, middleBeforeStart, middleBeforeEnd, middleAfterStart, middleAfterStart),
+      )
+      continue
+    }
+
+    const beforeLength = middleBeforeEnd - middleBeforeStart
+    const afterLength = middleAfterEnd - middleAfterStart
+
+    if (beforeLength === 1 || afterLength === 1) {
+      appendSingleElementRanges(
+        ranges,
+        before,
+        after,
+        middleBeforeStart,
+        middleBeforeEnd,
+        middleAfterStart,
+        middleAfterEnd,
+        equals,
+      )
+      continue
+    }
+
+    if (beforeLength + afterLength <= TRACE_SUBPROBLEM_SIZE) {
+      const tracedRanges = calculateTraceMyersRanges(
+        before,
+        after,
+        middleBeforeStart,
+        middleBeforeEnd,
+        middleAfterStart,
+        middleAfterEnd,
+        equals,
+        undefined,
+        Number.POSITIVE_INFINITY,
+        Number.POSITIVE_INFINITY,
+      )
+
+      if (!tracedRanges) {
+        throw new Error('Small Myers subproblem unexpectedly exceeded an unlimited trace')
+      }
+
+      for (const range of tracedRanges) {
+        appendForwardRange(ranges, range)
+      }
+      continue
+    }
+
+    const split = findMyersSplit(
+      before,
+      after,
+      middleBeforeStart,
+      middleBeforeEnd,
+      middleAfterStart,
+      middleAfterEnd,
+      equals,
+      forwardWorkspace,
+      reverseWorkspace,
+    )
+
+    if (!split) {
+      appendForwardRange(
+        ranges,
+        createRange(DELETE, middleBeforeStart, middleBeforeEnd, middleAfterStart, middleAfterStart),
+      )
+      appendForwardRange(
+        ranges,
+        createRange(INSERT, middleBeforeEnd, middleBeforeEnd, middleAfterStart, middleAfterEnd),
+      )
+      continue
+    }
+
+    if (
+      (split.beforeIndex === middleBeforeStart && split.afterIndex === middleAfterStart) ||
+      (split.beforeIndex === middleBeforeEnd && split.afterIndex === middleAfterEnd)
+    ) {
+      throw new Error('Myers bisect produced a non-progressing split')
+    }
+
+    work.push({
+      kind: 'diff',
+      beforeStart: split.beforeIndex,
+      beforeEnd: middleBeforeEnd,
+      afterStart: split.afterIndex,
+      afterEnd: middleAfterEnd,
+    })
+    work.push({
+      kind: 'diff',
+      beforeStart: middleBeforeStart,
+      beforeEnd: split.beforeIndex,
+      afterStart: middleAfterStart,
+      afterEnd: split.afterIndex,
+    })
+  }
+
+  return ranges
+}
+
+function findMyersSplit<Element>(
+  before: Indexable<Element>,
+  after: Indexable<Element>,
+  beforeStart: number,
+  beforeEnd: number,
+  afterStart: number,
+  afterEnd: number,
+  equals: (before: Element, after: Element) => boolean,
+  forward: Int32Array,
+  reverse: Int32Array,
+): MyersSplit | undefined {
+  const beforeLength = beforeEnd - beforeStart
+  const afterLength = afterEnd - afterStart
+  const maximumDistance = Math.ceil((beforeLength + afterLength) / 2)
+  const offset = maximumDistance + 1
+  const vectorLength = 2 * maximumDistance + 3
+  const delta = beforeLength - afterLength
+  const overlapsOnForwardPass = delta % 2 !== 0
+  let forwardStart = 0
+  let forwardEnd = 0
+  let reverseStart = 0
+  let reverseEnd = 0
+
+  forward.fill(-1, 0, vectorLength)
+  reverse.fill(-1, 0, vectorLength)
+  forward[offset + 1] = 0
+  reverse[offset + 1] = 0
+
+  for (let distance = 0; distance < maximumDistance; distance += 1) {
+    for (
+      let diagonal = -distance + forwardStart;
+      diagonal <= distance - forwardEnd;
+      diagonal += 2
+    ) {
+      const vectorIndex = offset + diagonal
+      let beforeIndex =
+        diagonal === -distance ||
+        (diagonal !== distance &&
+          (forward[vectorIndex - 1] ?? -1) < (forward[vectorIndex + 1] ?? -1))
+          ? (forward[vectorIndex + 1] ?? 0)
+          : (forward[vectorIndex - 1] ?? -1) + 1
+      let afterIndex = beforeIndex - diagonal
+
+      while (
+        beforeIndex < beforeLength &&
+        afterIndex < afterLength &&
+        equals(before[beforeStart + beforeIndex]!, after[afterStart + afterIndex]!)
+      ) {
+        beforeIndex += 1
+        afterIndex += 1
+      }
+
+      forward[vectorIndex] = beforeIndex
+
+      if (beforeIndex > beforeLength) {
+        forwardEnd += 2
+      } else if (afterIndex > afterLength) {
+        forwardStart += 2
+      } else if (overlapsOnForwardPass) {
+        const reverseDiagonal = delta - diagonal
+        const reverseIndex = offset + reverseDiagonal
+
+        if (
+          reverseIndex >= 0 &&
+          reverseIndex < vectorLength &&
+          (reverse[reverseIndex] ?? -1) >= 0 &&
+          beforeIndex >= beforeLength - (reverse[reverseIndex] ?? 0)
+        ) {
+          return {
+            beforeIndex: beforeStart + beforeIndex,
+            afterIndex: afterStart + afterIndex,
+          }
+        }
+      }
+    }
+
+    for (
+      let diagonal = -distance + reverseStart;
+      diagonal <= distance - reverseEnd;
+      diagonal += 2
+    ) {
+      const vectorIndex = offset + diagonal
+      let beforeIndex =
+        diagonal === -distance ||
+        (diagonal !== distance &&
+          (reverse[vectorIndex - 1] ?? -1) < (reverse[vectorIndex + 1] ?? -1))
+          ? (reverse[vectorIndex + 1] ?? 0)
+          : (reverse[vectorIndex - 1] ?? -1) + 1
+      let afterIndex = beforeIndex - diagonal
+
+      while (
+        beforeIndex < beforeLength &&
+        afterIndex < afterLength &&
+        equals(before[beforeEnd - beforeIndex - 1]!, after[afterEnd - afterIndex - 1]!)
+      ) {
+        beforeIndex += 1
+        afterIndex += 1
+      }
+
+      reverse[vectorIndex] = beforeIndex
+
+      if (beforeIndex > beforeLength) {
+        reverseEnd += 2
+      } else if (afterIndex > afterLength) {
+        reverseStart += 2
+      } else if (!overlapsOnForwardPass) {
+        const forwardDiagonal = delta - diagonal
+        const forwardIndex = offset + forwardDiagonal
+        const forwardBeforeIndex = forward[forwardIndex] ?? -1
+
+        if (
+          forwardIndex >= 0 &&
+          forwardIndex < vectorLength &&
+          forwardBeforeIndex >= 0 &&
+          forwardBeforeIndex >= beforeLength - beforeIndex
+        ) {
+          return {
+            beforeIndex: beforeStart + forwardBeforeIndex,
+            afterIndex: afterStart + forwardBeforeIndex - forwardDiagonal,
+          }
+        }
+      }
+    }
+  }
+
+  return undefined
+}
+
+function appendSingleElementRanges<Element>(
+  ranges: MutableDiffRange[],
+  before: Indexable<Element>,
+  after: Indexable<Element>,
+  beforeStart: number,
+  beforeEnd: number,
+  afterStart: number,
+  afterEnd: number,
+  equals: (before: Element, after: Element) => boolean,
+): void {
+  if (beforeEnd - beforeStart === 1) {
+    let match = afterStart
+
+    while (match < afterEnd && !equals(before[beforeStart]!, after[match]!)) {
+      match += 1
+    }
+
+    if (match === afterEnd) {
+      appendForwardRange(
+        ranges,
+        createRange(DELETE, beforeStart, beforeEnd, afterStart, afterStart),
+      )
+      appendForwardRange(ranges, createRange(INSERT, beforeEnd, beforeEnd, afterStart, afterEnd))
+      return
+    }
+
+    if (match > afterStart) {
+      appendForwardRange(ranges, createRange(INSERT, beforeStart, beforeStart, afterStart, match))
+    }
+    appendForwardRange(ranges, createRange(EQUAL, beforeStart, beforeEnd, match, match + 1))
+    if (match + 1 < afterEnd) {
+      appendForwardRange(ranges, createRange(INSERT, beforeEnd, beforeEnd, match + 1, afterEnd))
+    }
+    return
+  }
+
+  let match = beforeStart
+
+  while (match < beforeEnd && !equals(before[match]!, after[afterStart]!)) {
+    match += 1
+  }
+
+  if (match === beforeEnd) {
+    appendForwardRange(ranges, createRange(DELETE, beforeStart, beforeEnd, afterStart, afterStart))
+    appendForwardRange(ranges, createRange(INSERT, beforeEnd, beforeEnd, afterStart, afterEnd))
+    return
+  }
+
+  if (match > beforeStart) {
+    appendForwardRange(ranges, createRange(DELETE, beforeStart, match, afterStart, afterStart))
+  }
+  appendForwardRange(ranges, createRange(EQUAL, match, match + 1, afterStart, afterEnd))
+  if (match + 1 < beforeEnd) {
+    appendForwardRange(ranges, createRange(DELETE, match + 1, beforeEnd, afterEnd, afterEnd))
+  }
+}
+
+function appendForwardRange(ranges: MutableDiffRange[], range: MutableDiffRange): void {
+  const previous = ranges.at(-1)
+
+  if (
+    previous?.operation === range.operation &&
+    previous.beforeEnd === range.beforeStart &&
+    previous.afterEnd === range.afterStart
+  ) {
+    previous.beforeEnd = range.beforeEnd
+    previous.afterEnd = range.afterEnd
+    return
+  }
+
+  ranges.push(range)
 }
 
 function backtrack(
