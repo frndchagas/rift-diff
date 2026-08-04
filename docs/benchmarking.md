@@ -8,14 +8,14 @@ the same inputs.
 
 ## Comparison lanes
 
-The report keeps two `rift-diff` entries:
+The report keeps two `rift-diff` measurement lanes:
 
-- `rift ranges` measures the low-level, zero-copy range API.
-- `rift materialized` measures the convenience API that slices values like incumbent libraries.
+- `rift core ranges` measures the low-level, zero-copy range API.
+- `rift-diff` measures the convenience API that slices values like incumbent libraries.
 
-The incumbents currently return materialized output. Comparisons against `rift ranges` demonstrate
-the value of the range-oriented contract; comparisons against `rift materialized` are the fair
-end-to-end comparison.
+The primary table contains only materialized APIs and is the fair end-to-end comparison. The range
+API appears in a separate diagnostic table because the incumbents currently return materialized
+output.
 
 Performance scenarios currently use ASCII so every implementation operates on equivalent token
 boundaries. Unicode correctness and segmentation performance need separate suites because jsdiff
@@ -55,9 +55,13 @@ After every performance change:
 1. Commit the implementation so the measured tree is identifiable.
 2. Run the full scenario matrix on Bun and Node.js from an otherwise clean tree.
 3. Save both raw JSON reports under `bench/results/`.
-4. Present two complete tables containing the new result and the delta from the previous result.
+4. Present a materialized-output table containing the previous `rift-diff` result, new result,
+   explicit delta, and every incumbent.
 5. Call a change an improvement only when repeated runs agree and correctness remains green.
 6. Record regressions as prominently as wins; do not combine runtime results into one score.
+
+RSD is not shown beside throughput because it can be mistaken for a competitor comparison. Results
+at or above 5% RSD appear in a separate stability warning, while exact RSD remains in the raw JSON.
 
 The report includes runtime, operating system, architecture, CPU, memory, Git commit, dirty state,
 profile parameters, iteration counts, raw samples, edit cost, medians, p95, and RSD.
@@ -65,8 +69,8 @@ profile parameters, iteration counts, raw samples, edit cost, medians, p95, and 
 ## Commands
 
 ```bash
-bun run bench:bun -- --label baseline --output bench/results/baseline-bun.json
-bun run bench:node -- --label baseline --output bench/results/baseline-node.json
+bun run bench:bun -- --label improvement --compare bench/results/baseline-bun.json --output bench/results/improvement-bun.json
+bun run bench:node -- --label improvement --compare bench/results/baseline-node.json --output bench/results/improvement-node.json
 ```
 
 Use `--profile quick`, `--profile standard`, or `--profile full` to select the measurement budget.

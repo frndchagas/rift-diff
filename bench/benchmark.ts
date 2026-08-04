@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { arch, cpus, platform, release, totalmem } from 'node:os'
 import { diffChars } from 'diff'
@@ -149,7 +149,7 @@ const scenarios: readonly Scenario[] = [
 const benchmarks: readonly Benchmark[] = [
   {
     id: 'rift-ranges',
-    name: 'rift ranges',
+    name: 'rift core ranges',
     lane: 'ranges',
     run: (before, after) => diffRanges(before, after),
     inspect: (before, after) =>
@@ -163,7 +163,7 @@ const benchmarks: readonly Benchmark[] = [
   },
   {
     id: 'rift-materialized',
-    name: 'rift materialized',
+    name: 'rift-diff',
     lane: 'materialized',
     run: (before, after) => riftDiff(before, after),
     inspect: (before, after) => riftDiff(before, after),
@@ -328,7 +328,9 @@ function runController(selectedProfile: Profile): void {
     results,
   }
 
-  printReport(report)
+  const comparisonPath = readArgument('--compare')
+  const comparison = comparisonPath ? readReport(comparisonPath) : undefined
+  printReport(report, comparison)
 
   const outputPath = readArgument('--output')
   if (outputPath) {
@@ -444,25 +446,109 @@ function verifyImplementations(): ReadonlyMap<string, number> {
   return distances
 }
 
-function printReport(report: BenchmarkReport): void {
+function printReport(report: BenchmarkReport, comparison: BenchmarkReport | undefined): void {
+  if (comparison && comparison.runtime.name !== report.runtime.name) {
+    throw new Error(
+      `Cannot compare ${report.runtime.name} results with ${comparison.runtime.name} results`,
+    )
+  }
+
   console.log(`# ${report.label}: ${report.runtime.name} ${report.runtime.version}`)
   console.log(
     `${report.system.platform} ${report.system.architecture} · ${report.system.cpu} · commit ${report.commit}${report.dirty ? ' (dirty)' : ''}`,
   )
   console.log(
-    `${report.profile.sampleCount} isolated samples · ${report.profile.sampleMilliseconds} ms target/sample · median ops/s (RSD)`,
+    `${report.profile.sampleCount} isolated samples · ${report.profile.sampleMilliseconds} ms target/sample · median ops/s`,
   )
   console.log('')
-  console.log(`| Scenario | ${report.benchmarks.map((benchmark) => benchmark.name).join(' | ')} |`)
-  console.log(`| --- | ${report.benchmarks.map(() => '---:').join(' | ')} |`)
+  console.log('## Fair comparison: materialized text')
+
+  if (comparison) {
+    console.log(
+      '| Scenario | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |',
+    )
+    console.log('| --- | ---: | ---: | ---: | ---: | ---: | ---: |')
+  } else {
+    console.log('| Scenario | rift-diff | fast-diff | fast-myers-diff | jsdiff |')
+    console.log('| --- | ---: | ---: | ---: | ---: |')
+  }
 
   for (const scenario of report.scenarios) {
-    const cells = report.benchmarks.map((benchmark) => {
-      const result = findResult(report.results, benchmark.id, scenario.id)
-      return `${formatOperations(result.medianOperationsPerSecond)} (${formatPercent(result.relativeStandardDeviation)})`
-    })
-    console.log(`| ${scenario.name} | ${cells.join(' | ')} |`)
+    const currentRift = findResult(report.results, 'rift-materialized', scenario.id)
+    const fastDiffResult = findResult(report.results, 'fast-diff', scenario.id)
+    const fastMyersResult = findResult(report.results, 'fast-myers-diff', scenario.id)
+    const jsdiffResult = findResult(report.results, 'jsdiff', scenario.id)
+
+    if (comparison) {
+      const previousRift = findResult(comparison.results, 'rift-materialized', scenario.id)
+      console.log(
+        `| ${scenario.name} | ${formatOperations(previousRift.medianOperationsPerSecond)} | ${formatOperations(currentRift.medianOperationsPerSecond)} | ${formatChange(currentRift, previousRift)} | ${formatOperations(fastDiffResult.medianOperationsPerSecond)} | ${formatOperations(fastMyersResult.medianOperationsPerSecond)} | ${formatOperations(jsdiffResult.medianOperationsPerSecond)} |`,
+      )
+    } else {
+      console.log(
+        `| ${scenario.name} | ${formatOperations(currentRift.medianOperationsPerSecond)} | ${formatOperations(fastDiffResult.medianOperationsPerSecond)} | ${formatOperations(fastMyersResult.medianOperationsPerSecond)} | ${formatOperations(jsdiffResult.medianOperationsPerSecond)} |`,
+      )
+    }
   }
+
+  console.log('')
+  console.log('## Low-level range API')
+
+  if (comparison) {
+    console.log('| Scenario | Ranges before | Ranges now | Change |')
+    console.log('| --- | ---: | ---: | ---: |')
+  } else {
+    console.log('| Scenario | Rift core ranges |')
+    console.log('| --- | ---: |')
+  }
+
+  for (const scenario of report.scenarios) {
+    const currentRanges = findResult(report.results, 'rift-ranges', scenario.id)
+
+    if (comparison) {
+      const previousRanges = findResult(comparison.results, 'rift-ranges', scenario.id)
+      console.log(
+        `| ${scenario.name} | ${formatOperations(previousRanges.medianOperationsPerSecond)} | ${formatOperations(currentRanges.medianOperationsPerSecond)} | ${formatChange(currentRanges, previousRanges)} |`,
+      )
+    } else {
+      console.log(
+        `| ${scenario.name} | ${formatOperations(currentRanges.medianOperationsPerSecond)} |`,
+      )
+    }
+  }
+
+  const unstableResults = report.results.filter(
+    (result) => result.relativeStandardDeviation >= 0.05,
+  )
+
+  if (unstableResults.length > 0) {
+    console.log('')
+    console.log('## Stability warnings')
+    console.log('RSD at or above 5%; repeat these measurements before drawing a close comparison.')
+
+    for (const result of unstableResults) {
+      const benchmark = report.benchmarks.find((candidate) => candidate.id === result.benchmarkId)
+      const scenario = report.scenarios.find((candidate) => candidate.id === result.scenarioId)
+
+      if (!benchmark || !scenario) {
+        throw new Error(`Missing metadata for ${result.benchmarkId}/${result.scenarioId}`)
+      }
+
+      console.log(
+        `- ${benchmark.name}, ${scenario.name}: ${formatPercent(result.relativeStandardDeviation)} RSD`,
+      )
+    }
+  }
+}
+
+function readReport(path: string): BenchmarkReport {
+  const report: BenchmarkReport = JSON.parse(readFileSync(path, 'utf8'))
+
+  if (report.schemaVersion !== 1) {
+    throw new Error(`Unsupported benchmark report schema in ${path}`)
+  }
+
+  return report
 }
 
 function findResult(
@@ -572,4 +658,9 @@ function formatOperations(operationsPerSecond: number): string {
 
 function formatPercent(ratio: number): string {
   return `${(ratio * 100).toFixed(1)}%`
+}
+
+function formatChange(current: BenchmarkResult, previous: BenchmarkResult): string {
+  const change = current.medianOperationsPerSecond / previous.medianOperationsPerSecond - 1
+  return `${change >= 0 ? '+' : ''}${formatPercent(change)}`
 }
