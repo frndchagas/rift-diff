@@ -8,6 +8,7 @@ import { calcSlices } from 'fast-myers-diff'
 import { diff as riftDiff, diffRanges } from '../src/index.ts'
 import { DELETE, INSERT } from '../src/types.ts'
 import type { DiffOperation } from '../src/types.ts'
+import { corpus } from './fixtures.ts'
 
 interface Scenario {
   readonly id: string
@@ -199,6 +200,30 @@ const scenarios: readonly Scenario[] = [
     name: 'fully different text',
     before: 'a'.repeat(300),
     after: 'b'.repeat(300),
+  },
+  {
+    id: 'real-code',
+    name: 'real code file edit',
+    before: corpus.code.before,
+    after: corpus.code.after,
+  },
+  {
+    id: 'real-json',
+    name: 'real json config edit',
+    before: corpus.json.before,
+    after: corpus.json.after,
+  },
+  {
+    id: 'real-log',
+    name: 'real log stream update',
+    before: corpus.log.before,
+    after: corpus.log.after,
+  },
+  {
+    id: 'real-prose',
+    name: 'real prose revision',
+    before: corpus.prose.before,
+    after: corpus.prose.after,
   },
 ]
 
@@ -648,9 +673,9 @@ function printReport(report: BenchmarkReport, comparison: StoredBenchmarkReport 
     const jsdiffResult = findResult(report.results, 'jsdiff', scenario.id)
 
     if (comparison) {
-      const previousRift = findResult(comparison.results, 'rift-materialized', scenario.id)
+      const previousRift = findOptionalResult(comparison.results, 'rift-materialized', scenario.id)
       console.log(
-        `| ${scenario.name} | ${formatOperations(previousRift.medianOperationsPerSecond)} | ${formatOperations(currentRift.medianOperationsPerSecond)} | ${formatChange(currentRift, previousRift)} | ${formatOperations(fastDiffResult.medianOperationsPerSecond)} | ${formatOperations(fastMyersResult.medianOperationsPerSecond)} | ${formatOperations(jsdiffResult.medianOperationsPerSecond)} |`,
+        `| ${scenario.name} | ${previousRift ? formatOperations(previousRift.medianOperationsPerSecond) : '—'} | ${formatOperations(currentRift.medianOperationsPerSecond)} | ${previousRift ? formatChange(currentRift, previousRift) : '—'} | ${formatOperations(fastDiffResult.medianOperationsPerSecond)} | ${formatOperations(fastMyersResult.medianOperationsPerSecond)} | ${formatOperations(jsdiffResult.medianOperationsPerSecond)} |`,
       )
     } else {
       console.log(
@@ -674,9 +699,9 @@ function printReport(report: BenchmarkReport, comparison: StoredBenchmarkReport 
     const currentRanges = findResult(report.results, 'rift-ranges', scenario.id)
 
     if (comparison) {
-      const previousRanges = findResult(comparison.results, 'rift-ranges', scenario.id)
+      const previousRanges = findOptionalResult(comparison.results, 'rift-ranges', scenario.id)
       console.log(
-        `| ${scenario.name} | ${formatOperations(previousRanges.medianOperationsPerSecond)} | ${formatOperations(currentRanges.medianOperationsPerSecond)} | ${formatChange(currentRanges, previousRanges)} |`,
+        `| ${scenario.name} | ${previousRanges ? formatOperations(previousRanges.medianOperationsPerSecond) : '—'} | ${formatOperations(currentRanges.medianOperationsPerSecond)} | ${previousRanges ? formatChange(currentRanges, previousRanges) : '—'} |`,
       )
     } else {
       console.log(
@@ -743,9 +768,13 @@ function printMemoryReport(
     const jsdiffResult = findMemoryResult(memory.results, 'jsdiff', scenario.id)
 
     if (comparison) {
-      const previousRift = findMemoryResult(comparison.results, 'rift-materialized', scenario.id)
+      const previousRift = findOptionalMemoryResult(
+        comparison.results,
+        'rift-materialized',
+        scenario.id,
+      )
       console.log(
-        `| ${scenario.name} | ${formatBytes(previousRift.incrementalPeakResidentBytes)} | ${formatBytes(currentRift.incrementalPeakResidentBytes)} | ${formatByteChange(currentRift, previousRift)} | ${formatBytes(fastDiffResult.incrementalPeakResidentBytes)} | ${formatBytes(fastMyersResult.incrementalPeakResidentBytes)} | ${formatBytes(jsdiffResult.incrementalPeakResidentBytes)} |`,
+        `| ${scenario.name} | ${previousRift ? formatBytes(previousRift.incrementalPeakResidentBytes) : '—'} | ${formatBytes(currentRift.incrementalPeakResidentBytes)} | ${previousRift ? formatByteChange(currentRift, previousRift) : '—'} | ${formatBytes(fastDiffResult.incrementalPeakResidentBytes)} | ${formatBytes(fastMyersResult.incrementalPeakResidentBytes)} | ${formatBytes(jsdiffResult.incrementalPeakResidentBytes)} |`,
       )
     } else {
       console.log(
@@ -785,15 +814,33 @@ function findResult<Result extends ComparableThroughputResult>(
   benchmarkId: string,
   scenarioId: string,
 ): Result {
-  const result = results.find(
-    (candidate) => candidate.benchmarkId === benchmarkId && candidate.scenarioId === scenarioId,
-  )
+  const result = findOptionalResult(results, benchmarkId, scenarioId)
 
   if (!result) {
     throw new Error(`Missing result for ${benchmarkId}/${scenarioId}`)
   }
 
   return result
+}
+
+function findOptionalResult<Result extends ComparableThroughputResult>(
+  results: readonly Result[],
+  benchmarkId: string,
+  scenarioId: string,
+): Result | undefined {
+  return results.find(
+    (candidate) => candidate.benchmarkId === benchmarkId && candidate.scenarioId === scenarioId,
+  )
+}
+
+function findOptionalMemoryResult(
+  results: readonly BenchmarkMemoryResult[],
+  benchmarkId: string,
+  scenarioId: string,
+): BenchmarkMemoryResult | undefined {
+  return results.find(
+    (candidate) => candidate.benchmarkId === benchmarkId && candidate.scenarioId === scenarioId,
+  )
 }
 
 function findMemoryResult(
