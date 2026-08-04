@@ -7,6 +7,8 @@
 ```bash
 bun install
 bun run test
+bun run test:extended
+bun run test:coverage
 bun run typecheck
 bun run lint
 bun run format:check
@@ -28,3 +30,4 @@ bun run bench:node
 - Use Conventional Commits.
 
 Read [docs/rfc-0001-engine.md](docs/rfc-0001-engine.md) before changing the algorithm or public API.
+Read [docs/testing.md](docs/testing.md) for the layered test gauntlet every engine change must pass.
