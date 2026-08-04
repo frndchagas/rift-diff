@@ -312,21 +312,29 @@ function calculateTraceMyersRanges(
   const distanceLimit = Math.min(maxEditDistance ?? maximumDistance, maximumDistance)
   const frontierDistanceLimit = Math.min(distanceLimit, traceDistanceLimit)
   const offset = frontierDistanceLimit + 1
-  const frontier = new Int32Array(2 * frontierDistanceLimit + 3)
-  const trace: Int32Array[] = []
+  const stride = 2 * frontierDistanceLimit + 3
+  const frontier = new Int32Array(stride)
+  let layerCapacity = Math.min(frontierDistanceLimit, 8) + 2
+  let traceBuffer = new Int32Array(layerCapacity * stride)
+  let usedLayers = 0
 
   frontier.fill(-1)
   frontier[offset + 1] = 0
 
   for (let distance = 0; distance <= distanceLimit; distance += 1) {
-    if (
-      distance > traceDistanceLimit ||
-      (trace.length + 2) * frontier.byteLength > traceWorkspaceLimitBytes
-    ) {
+    if (distance > traceDistanceLimit || (usedLayers + 2) * stride * 4 > traceWorkspaceLimitBytes) {
       return undefined
     }
 
-    trace.push(frontier.slice())
+    if (usedLayers === layerCapacity) {
+      layerCapacity = Math.min(layerCapacity * 4, distanceLimit + 1)
+      const grownBuffer = new Int32Array(layerCapacity * stride)
+      grownBuffer.set(traceBuffer)
+      traceBuffer = grownBuffer
+    }
+
+    traceBuffer.set(frontier, usedLayers * stride)
+    usedLayers += 1
 
     for (let diagonal = -distance; diagonal <= distance; diagonal += 2) {
       const frontierIndex = offset + diagonal
@@ -357,7 +365,8 @@ function calculateTraceMyersRanges(
 
       if (beforeIndex >= beforeLength && afterIndex >= afterLength) {
         return backtrack(
-          trace,
+          traceBuffer,
+          stride,
           distance,
           offset,
           beforeLength,
@@ -722,7 +731,8 @@ function appendForwardRange(ranges: MutableDiffRange[], range: MutableDiffRange)
 }
 
 function backtrack(
-  trace: readonly Int32Array[],
+  traceBuffer: Int32Array,
+  stride: number,
   distance: number,
   offset: number,
   beforeLength: number,
@@ -735,23 +745,18 @@ function backtrack(
   let afterIndex = afterLength
 
   for (let currentDistance = distance; currentDistance > 0; currentDistance -= 1) {
-    const frontier = trace[currentDistance]
-
-    if (!frontier) {
-      throw new Error('Missing Myers frontier while reconstructing the edit script')
-    }
-
+    const rowOffset = currentDistance * stride
     const diagonal = beforeIndex - afterIndex
-    const frontierIndex = offset + diagonal
+    const frontierIndex = rowOffset + offset + diagonal
     const previousDiagonal =
       diagonal === -currentDistance ||
       (diagonal !== currentDistance &&
-        (frontier[frontierIndex - 1] ?? -1) < (frontier[frontierIndex + 1] ?? -1))
+        traceBuffer[frontierIndex - 1]! < traceBuffer[frontierIndex + 1]!)
         ? diagonal + 1
         : diagonal - 1
-    const previousBeforeIndex = frontier[offset + previousDiagonal]
+    const previousBeforeIndex = traceBuffer[rowOffset + offset + previousDiagonal]!
 
-    if (previousBeforeIndex === undefined || previousBeforeIndex < 0) {
+    if (previousBeforeIndex < 0) {
       throw new Error('Invalid Myers frontier while reconstructing the edit script')
     }
 
