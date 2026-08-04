@@ -775,18 +775,19 @@ function backtrack(
     }
 
     const previousAfterIndex = previousBeforeIndex - previousDiagonal
+    const snakeLength = Math.min(beforeIndex - previousBeforeIndex, afterIndex - previousAfterIndex)
 
-    while (beforeIndex > previousBeforeIndex && afterIndex > previousAfterIndex) {
-      beforeIndex -= 1
-      afterIndex -= 1
+    if (snakeLength > 0) {
+      beforeIndex -= snakeLength
+      afterIndex -= snakeLength
       appendReversedRange(
         reversedRanges,
         createRange(
           EQUAL,
           beforeOffset + beforeIndex,
-          beforeOffset + beforeIndex + 1,
+          beforeOffset + beforeIndex + snakeLength,
           afterOffset + afterIndex,
-          afterOffset + afterIndex + 1,
+          afterOffset + afterIndex + snakeLength,
         ),
       )
     }
@@ -818,17 +819,17 @@ function backtrack(
     }
   }
 
-  while (beforeIndex > 0 && afterIndex > 0) {
-    beforeIndex -= 1
-    afterIndex -= 1
+  if (beforeIndex > 0 && afterIndex > 0) {
+    const snakeLength = Math.min(beforeIndex, afterIndex)
+
     appendReversedRange(
       reversedRanges,
       createRange(
         EQUAL,
+        beforeOffset + beforeIndex - snakeLength,
         beforeOffset + beforeIndex,
-        beforeOffset + beforeIndex + 1,
+        afterOffset + afterIndex - snakeLength,
         afterOffset + afterIndex,
-        afterOffset + afterIndex + 1,
       ),
     )
   }
