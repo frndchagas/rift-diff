@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { arch, cpus, platform, release, totalmem } from 'node:os'
-import { diffChars } from 'diff'
+import { diffArrays, diffChars } from 'diff'
 import fastDiff from 'fast-diff'
 import { calcSlices } from 'fast-myers-diff'
 import { diff as riftDiff, diffRanges } from '../src/index.ts'
@@ -129,6 +129,17 @@ interface BenchmarkReport {
     readonly afterLength: number
   }[]
   readonly benchmarks: readonly {
+    readonly id: string
+    readonly name: string
+    readonly lane: Benchmark['lane']
+  }[]
+  readonly sequenceScenarios: readonly {
+    readonly id: string
+    readonly name: string
+    readonly beforeLength: number
+    readonly afterLength: number
+  }[]
+  readonly sequenceBenchmarks: readonly {
     readonly id: string
     readonly name: string
     readonly lane: Benchmark['lane']
@@ -278,6 +289,162 @@ const benchmarks: readonly Benchmark[] = [
   },
 ]
 
+type SequenceElements = string[] | number[] | Uint32Array
+
+interface SequenceScenario {
+  readonly id: string
+  readonly name: string
+  readonly before: SequenceElements
+  readonly after: SequenceElements
+}
+
+interface InspectedSequenceChunk {
+  readonly operation: DiffOperation
+  readonly values: readonly (string | number)[]
+}
+
+interface SequenceBenchmark {
+  readonly id: string
+  readonly name: string
+  readonly lane: 'ranges' | 'materialized'
+  readonly supports: (scenario: SequenceScenario) => boolean
+  readonly run: (before: SequenceElements, after: SequenceElements) => MeasuredOutput
+  readonly inspect: (
+    before: SequenceElements,
+    after: SequenceElements,
+  ) => readonly InspectedSequenceChunk[]
+}
+
+function generateTokenValues(length: number): number[] {
+  const values: number[] = []
+  let state = 0x9e3779b9
+
+  for (let index = 0; index < length; index += 1) {
+    state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0
+    values.push(state % 512)
+  }
+
+  return values
+}
+
+const numberTokensBefore = generateTokenValues(2_000)
+const numberTokensAfter = numberTokensBefore.map((value, index) =>
+  (index + 1) % 100 === 0 ? (value + 1) % 512 : value,
+)
+const typedTokensBefore = Uint32Array.from(generateTokenValues(4_000))
+const typedTokensAfter = (() => {
+  const edited = Uint32Array.from(typedTokensBefore)
+
+  for (let index = 399; index < edited.length; index += 400) {
+    edited[index] = edited[index]! ^ 0xffff
+  }
+
+  return edited
+})()
+
+const sequenceScenarios: readonly SequenceScenario[] = [
+  {
+    id: 'seq-code-lines',
+    name: 'array of code lines',
+    before: corpus.code.before.split('\n'),
+    after: corpus.code.after.split('\n'),
+  },
+  {
+    id: 'seq-number-tokens',
+    name: 'array of number tokens',
+    before: numberTokensBefore,
+    after: numberTokensAfter,
+  },
+  {
+    id: 'seq-typed-u32',
+    name: 'typed array with sparse edits',
+    before: typedTokensBefore,
+    after: typedTokensAfter,
+  },
+]
+
+function sequenceValues(
+  elements: SequenceElements,
+  start: number,
+  end: number,
+): (string | number)[] {
+  const values: (string | number)[] = []
+
+  for (let index = start; index < end; index += 1) {
+    values.push(elements[index]!)
+  }
+
+  return values
+}
+
+const sequenceBenchmarks: readonly SequenceBenchmark[] = [
+  {
+    id: 'rift-seq-ranges',
+    name: 'rift core ranges',
+    lane: 'ranges',
+    supports: () => true,
+    run: (before, after) => diffRanges<string | number>(before, after),
+    inspect: (before, after) =>
+      diffRanges<string | number>(before, after).map((range) => ({
+        operation: range.operation,
+        values:
+          range.operation === INSERT
+            ? sequenceValues(after, range.afterStart, range.afterEnd)
+            : sequenceValues(before, range.beforeStart, range.beforeEnd),
+      })),
+  },
+  {
+    id: 'rift-seq',
+    name: 'rift-diff',
+    lane: 'materialized',
+    supports: () => true,
+    run: (before, after) =>
+      before instanceof Uint32Array && after instanceof Uint32Array
+        ? riftDiff(before, after)
+        : riftDiff<string | number, (string | number)[]>(
+            before as (string | number)[],
+            after as (string | number)[],
+          ),
+    inspect: (before, after) =>
+      before instanceof Uint32Array && after instanceof Uint32Array
+        ? riftDiff(before, after).map((chunk) => ({
+            operation: chunk.operation,
+            values: [...chunk.value],
+          }))
+        : riftDiff<string | number, (string | number)[]>(
+            before as (string | number)[],
+            after as (string | number)[],
+          ).map((chunk) => ({ operation: chunk.operation, values: chunk.value })),
+  },
+  {
+    id: 'fmd-seq',
+    name: 'fast-myers-diff',
+    lane: 'materialized',
+    supports: () => true,
+    run: (before, after) => Array.from(calcSlices(before, after)),
+    inspect: (before, after) =>
+      Array.from(calcSlices(before, after), ([operation, slice]) => ({
+        operation,
+        values: [...slice],
+      })),
+  },
+  {
+    id: 'jsdiff-seq',
+    name: 'jsdiff diffArrays',
+    lane: 'materialized',
+    supports: (scenario) => Array.isArray(scenario.before) && Array.isArray(scenario.after),
+    run: (before, after) =>
+      diffArrays<string | number>(before as (string | number)[], after as (string | number)[]),
+    inspect: (before, after) =>
+      diffArrays<string | number>(before as (string | number)[], after as (string | number)[]).map(
+        (change) => ({
+          operation: change.added ? INSERT : change.removed ? DELETE : 0,
+          values: change.value,
+        }),
+      ),
+  },
+]
+
 const profiles: Readonly<Record<string, Profile>> = {
   quick: {
     name: 'quick',
@@ -327,17 +494,17 @@ if (process.argv.includes('--memory-control')) {
     throw new Error('Memory benchmark and scenario must be provided together')
   }
 
-  const benchmark = findBenchmark(memoryBenchmarkId)
-  const scenario = findScenario(memoryScenarioId)
-  process.stdout.write(`${JSON.stringify(measureMemoryWorker(benchmark, scenario))}\n`)
+  process.stdout.write(
+    `${JSON.stringify(measureMemoryWorker(memoryBenchmarkId, memoryScenarioId, resolveExecutable(memoryBenchmarkId, memoryScenarioId)))}\n`,
+  )
 } else if (workerBenchmarkId || workerScenarioId) {
   if (!workerBenchmarkId || !workerScenarioId) {
     throw new Error('Worker benchmark and scenario must be provided together')
   }
 
-  const benchmark = findBenchmark(workerBenchmarkId)
-  const scenario = findScenario(workerScenarioId)
-  process.stdout.write(`${JSON.stringify(measureWorker(benchmark, scenario, profile))}\n`)
+  process.stdout.write(
+    `${JSON.stringify(measureWorker(workerBenchmarkId, workerScenarioId, resolveExecutable(workerBenchmarkId, workerScenarioId), profile))}\n`,
+  )
 } else {
   runController(profile)
 }
@@ -345,24 +512,33 @@ if (process.argv.includes('--memory-control')) {
 function runController(selectedProfile: Profile): void {
   const inspectedDistances = verifyImplementations()
   const combinations = shuffle(
-    scenarios.flatMap((scenario) => benchmarks.map((benchmark) => ({ benchmark, scenario }))),
+    [
+      ...scenarios.flatMap((scenario) =>
+        benchmarks.map((benchmark) => ({ benchmarkId: benchmark.id, scenarioId: scenario.id })),
+      ),
+      ...sequenceScenarios.flatMap((scenario) =>
+        sequenceBenchmarks
+          .filter((benchmark) => benchmark.supports(scenario))
+          .map((benchmark) => ({ benchmarkId: benchmark.id, scenarioId: scenario.id })),
+      ),
+    ],
     0x5eed,
   )
   const cellProcesses = new Map<string, WorkerProcessSample[]>()
 
   for (let round = 0; round < selectedProfile.processesPerCell; round += 1) {
-    for (const { benchmark, scenario } of combinations) {
+    for (const { benchmarkId, scenarioId } of combinations) {
       const workerResult: WorkerResult = JSON.parse(
         runWorker([
           '--profile',
           selectedProfile.name,
           '--worker-benchmark',
-          benchmark.id,
+          benchmarkId,
           '--worker-scenario',
-          scenario.id,
+          scenarioId,
         ]),
       )
-      const key = `${benchmark.id}:${scenario.id}`
+      const key = `${benchmarkId}:${scenarioId}`
       const processes = cellProcesses.get(key) ?? []
 
       processes.push({
@@ -374,8 +550,8 @@ function runController(selectedProfile: Profile): void {
     }
   }
 
-  const results: BenchmarkResult[] = combinations.map(({ benchmark, scenario }) => {
-    const key = `${benchmark.id}:${scenario.id}`
+  const results: BenchmarkResult[] = combinations.map(({ benchmarkId, scenarioId }) => {
+    const key = `${benchmarkId}:${scenarioId}`
     const processes = cellProcesses.get(key)
 
     if (!processes || processes.length !== selectedProfile.processesPerCell) {
@@ -391,8 +567,8 @@ function runController(selectedProfile: Profile): void {
     const medianNanosecondsPerOperation = percentile(perProcessMedians, 0.5)
 
     return {
-      benchmarkId: benchmark.id,
-      scenarioId: scenario.id,
+      benchmarkId,
+      scenarioId,
       processes,
       medianNanosecondsPerOperation,
       p95NanosecondsPerOperation: percentile(pooledSamples, 0.95),
@@ -439,6 +615,17 @@ function runController(selectedProfile: Profile): void {
       name: benchmark.name,
       lane: benchmark.lane,
     })),
+    sequenceScenarios: sequenceScenarios.map((scenario) => ({
+      id: scenario.id,
+      name: scenario.name,
+      beforeLength: scenario.before.length,
+      afterLength: scenario.after.length,
+    })),
+    sequenceBenchmarks: sequenceBenchmarks.map((benchmark) => ({
+      id: benchmark.id,
+      name: benchmark.name,
+      lane: benchmark.lane,
+    })),
     results,
     memory: measureMemory(selectedProfile),
   }
@@ -456,22 +643,23 @@ function runController(selectedProfile: Profile): void {
 }
 
 function measureWorker(
-  benchmark: Benchmark,
-  scenario: Scenario,
+  benchmarkId: string,
+  scenarioId: string,
+  execute: () => MeasuredOutput,
   selectedProfile: Profile,
 ): WorkerResult {
-  const iterationsPerSample = calibrateIterations(benchmark, scenario, selectedProfile)
+  const iterationsPerSample = calibrateIterations(execute, selectedProfile)
   const warmupStartedAt = performance.now()
   let checksum = 0
 
   while (performance.now() - warmupStartedAt < selectedProfile.warmupMilliseconds) {
-    checksum = runBatch(benchmark, scenario, iterationsPerSample, checksum).checksum
+    checksum = runBatch(execute, iterationsPerSample, checksum).checksum
   }
 
   const samplesNanosecondsPerOperation: number[] = []
 
   for (let sample = 0; sample < selectedProfile.sampleCount; sample += 1) {
-    const measurement = runBatch(benchmark, scenario, iterationsPerSample, checksum)
+    const measurement = runBatch(execute, iterationsPerSample, checksum)
     checksum = measurement.checksum
     samplesNanosecondsPerOperation.push(
       (measurement.durationMilliseconds * 1_000_000) / iterationsPerSample,
@@ -479,8 +667,8 @@ function measureWorker(
   }
 
   return {
-    benchmarkId: benchmark.id,
-    scenarioId: scenario.id,
+    benchmarkId,
+    scenarioId,
     iterationsPerSample,
     samplesNanosecondsPerOperation,
     checksum,
@@ -497,17 +685,26 @@ function measureMemory(selectedProfile: Profile): MemoryReport {
   ).toSorted((left, right) => left - right)
   const medianControlPeakResidentBytes = percentile(controlPeakResidentByteSamples, 0.5)
   const combinations = shuffle(
-    scenarios.flatMap((scenario) => benchmarks.map((benchmark) => ({ benchmark, scenario }))),
+    [
+      ...scenarios.flatMap((scenario) =>
+        benchmarks.map((benchmark) => ({ benchmarkId: benchmark.id, scenarioId: scenario.id })),
+      ),
+      ...sequenceScenarios.flatMap((scenario) =>
+        sequenceBenchmarks
+          .filter((benchmark) => benchmark.supports(scenario))
+          .map((benchmark) => ({ benchmarkId: benchmark.id, scenarioId: scenario.id })),
+      ),
+    ],
     0xc0ffee,
   )
   const results: BenchmarkMemoryResult[] = []
 
-  for (const { benchmark, scenario } of combinations) {
+  for (const { benchmarkId, scenarioId } of combinations) {
     const peakResidentByteSamples = Array.from(
       { length: selectedProfile.memorySampleCount },
       () => {
         const workerResult: MemoryWorkerResult = JSON.parse(
-          runWorker(['--memory-benchmark', benchmark.id, '--memory-scenario', scenario.id]),
+          runWorker(['--memory-benchmark', benchmarkId, '--memory-scenario', scenarioId]),
         )
         return workerResult.peakResidentBytes
       },
@@ -515,8 +712,8 @@ function measureMemory(selectedProfile: Profile): MemoryReport {
     const medianPeakResidentBytes = percentile(peakResidentByteSamples, 0.5)
 
     results.push({
-      benchmarkId: benchmark.id,
-      scenarioId: scenario.id,
+      benchmarkId,
+      scenarioId,
       peakResidentByteSamples,
       medianPeakResidentBytes,
       incrementalPeakResidentBytes: Math.max(
@@ -536,15 +733,41 @@ function measureMemory(selectedProfile: Profile): MemoryReport {
   }
 }
 
-function measureMemoryWorker(benchmark: Benchmark, scenario: Scenario): MemoryWorkerResult {
-  const output = benchmark.run(scenario.before, scenario.after)
+function measureMemoryWorker(
+  benchmarkId: string,
+  scenarioId: string,
+  execute: () => MeasuredOutput,
+): MemoryWorkerResult {
+  const output = execute()
 
   return {
-    benchmarkId: benchmark.id,
-    scenarioId: scenario.id,
+    benchmarkId,
+    scenarioId,
     peakResidentBytes: readPeakResidentBytes(),
     checksum: Math.imul(output.length, 16_777_619) >>> 0,
   }
+}
+
+function resolveExecutable(benchmarkId: string, scenarioId: string): () => MeasuredOutput {
+  const textBenchmark = benchmarks.find((candidate) => candidate.id === benchmarkId)
+
+  if (textBenchmark) {
+    const scenario = findScenario(scenarioId)
+    return () => textBenchmark.run(scenario.before, scenario.after)
+  }
+
+  const sequenceBenchmark = sequenceBenchmarks.find((candidate) => candidate.id === benchmarkId)
+  const sequenceScenario = sequenceScenarios.find((candidate) => candidate.id === scenarioId)
+
+  if (!sequenceBenchmark || !sequenceScenario) {
+    throw new Error(`Unknown benchmark cell: ${benchmarkId}/${scenarioId}`)
+  }
+
+  if (!sequenceBenchmark.supports(sequenceScenario)) {
+    throw new Error(`${sequenceBenchmark.name} does not support ${sequenceScenario.name}`)
+  }
+
+  return () => sequenceBenchmark.run(sequenceScenario.before, sequenceScenario.after)
 }
 
 function runWorker(arguments_: readonly string[]): string {
@@ -565,16 +788,12 @@ function readPeakResidentBytes(): number {
   return process.versions.bun ? maxResidentSetSize : maxResidentSetSize * 1024
 }
 
-function calibrateIterations(
-  benchmark: Benchmark,
-  scenario: Scenario,
-  selectedProfile: Profile,
-): number {
+function calibrateIterations(execute: () => MeasuredOutput, selectedProfile: Profile): number {
   let iterations = 1
   let checksum = 0
 
   while (iterations < 10_000_000) {
-    const measurement = runBatch(benchmark, scenario, iterations, checksum)
+    const measurement = runBatch(execute, iterations, checksum)
     checksum = measurement.checksum
 
     if (measurement.durationMilliseconds >= selectedProfile.calibrationMilliseconds) {
@@ -591,8 +810,7 @@ function calibrateIterations(
 }
 
 function runBatch(
-  benchmark: Benchmark,
-  scenario: Scenario,
+  execute: () => MeasuredOutput,
   iterations: number,
   initialChecksum: number,
 ): { readonly durationMilliseconds: number; readonly checksum: number } {
@@ -600,7 +818,7 @@ function runBatch(
   const startedAt = performance.now()
 
   for (let iteration = 0; iteration < iterations; iteration += 1) {
-    const output = benchmark.run(scenario.before, scenario.after)
+    const output = execute()
     checksum = Math.imul(checksum ^ output.length, 16_777_619) >>> 0
   }
 
@@ -629,6 +847,44 @@ function verifyImplementations(): ReadonlyMap<string, number> {
         (total, chunk) =>
           chunk.operation === DELETE || chunk.operation === INSERT
             ? total + chunk.value.length
+            : total,
+        0,
+      )
+      distances.set(`${benchmark.id}:${scenario.id}`, distance)
+    }
+  }
+
+  for (const scenario of sequenceScenarios) {
+    for (const benchmark of sequenceBenchmarks) {
+      if (!benchmark.supports(scenario)) {
+        continue
+      }
+
+      const chunks = benchmark.inspect(scenario.before, scenario.after)
+      const rebuilt: (string | number)[] = []
+
+      for (const chunk of chunks) {
+        if (chunk.operation !== DELETE) {
+          for (const value of chunk.values) {
+            rebuilt.push(value)
+          }
+        }
+      }
+
+      if (rebuilt.length !== scenario.after.length) {
+        throw new Error(`${benchmark.name} failed to reconstruct ${scenario.name}`)
+      }
+
+      for (let index = 0; index < rebuilt.length; index += 1) {
+        if (!Object.is(rebuilt[index], scenario.after[index])) {
+          throw new Error(`${benchmark.name} failed to reconstruct ${scenario.name}`)
+        }
+      }
+
+      const distance = chunks.reduce(
+        (total, chunk) =>
+          chunk.operation === DELETE || chunk.operation === INSERT
+            ? total + chunk.values.length
             : total,
         0,
       )
@@ -710,6 +966,8 @@ function printReport(report: BenchmarkReport, comparison: StoredBenchmarkReport 
     }
   }
 
+  printSequenceReport(report, comparison)
+
   if (report.memory) {
     printMemoryReport(report, report.memory, comparison?.memory)
   }
@@ -735,6 +993,78 @@ function printReport(report: BenchmarkReport, comparison: StoredBenchmarkReport 
 
       console.log(
         `- ${benchmark.name}, ${scenario.name}: ${formatPercent(result.relativeStandardDeviation)} RSD`,
+      )
+    }
+  }
+}
+
+function printSequenceReport(
+  report: BenchmarkReport,
+  comparison: StoredBenchmarkReport | undefined,
+): void {
+  if (report.sequenceScenarios.length === 0) {
+    return
+  }
+
+  console.log('')
+  console.log('## Sequence scenarios: arrays and typed arrays')
+  console.log('fast-diff is string-only and does not appear; — marks unsupported cells.')
+
+  if (comparison) {
+    console.log(
+      '| Scenario | Rift before | Rift now | Rift change | fast-myers-diff now | jsdiff diffArrays now |',
+    )
+    console.log('| --- | ---: | ---: | ---: | ---: | ---: |')
+  } else {
+    console.log('| Scenario | rift-diff | fast-myers-diff | jsdiff diffArrays |')
+    console.log('| --- | ---: | ---: | ---: |')
+  }
+
+  for (const scenario of report.sequenceScenarios) {
+    const currentRift = findResult(report.results, 'rift-seq', scenario.id)
+    const fastMyers = findResult(report.results, 'fmd-seq', scenario.id)
+    const jsdiffResult = findOptionalResult(report.results, 'jsdiff-seq', scenario.id)
+    const jsdiffColumn = jsdiffResult
+      ? formatOperations(jsdiffResult.medianOperationsPerSecond)
+      : '—'
+
+    if (comparison) {
+      const previousRift = findOptionalResult(comparison.results, 'rift-seq', scenario.id)
+      console.log(
+        `| ${scenario.name} | ${previousRift ? formatOperations(previousRift.medianOperationsPerSecond) : '—'} | ${formatOperations(currentRift.medianOperationsPerSecond)} | ${previousRift ? formatChange(currentRift, previousRift) : '—'} | ${formatOperations(fastMyers.medianOperationsPerSecond)} | ${jsdiffColumn} |`,
+      )
+    } else {
+      console.log(
+        `| ${scenario.name} | ${formatOperations(currentRift.medianOperationsPerSecond)} | ${formatOperations(fastMyers.medianOperationsPerSecond)} | ${jsdiffColumn} |`,
+      )
+    }
+  }
+
+  console.log('')
+  console.log('Sequence range API:')
+  console.log(
+    report.sequenceScenarios
+      .map((scenario) => {
+        const ranges = findResult(report.results, 'rift-seq-ranges', scenario.id)
+        return `${scenario.name} ${formatOperations(ranges.medianOperationsPerSecond)}`
+      })
+      .join(' · '),
+  )
+
+  if (report.memory) {
+    const memory = report.memory
+    console.log('')
+    console.log('Sequence incremental peak RSS:')
+    console.log('| Scenario | rift-diff | fast-myers-diff | jsdiff diffArrays |')
+    console.log('| --- | ---: | ---: | ---: |')
+
+    for (const scenario of report.sequenceScenarios) {
+      const rift = findMemoryResult(memory.results, 'rift-seq', scenario.id)
+      const fastMyers = findMemoryResult(memory.results, 'fmd-seq', scenario.id)
+      const jsdiffMemory = findOptionalMemoryResult(memory.results, 'jsdiff-seq', scenario.id)
+
+      console.log(
+        `| ${scenario.name} | ${formatBytes(rift.incrementalPeakResidentBytes)} | ${formatBytes(fastMyers.incrementalPeakResidentBytes)} | ${jsdiffMemory ? formatBytes(jsdiffMemory.incrementalPeakResidentBytes) : '—'} |`,
       )
     }
   }
@@ -857,16 +1187,6 @@ function findMemoryResult(
   }
 
   return result
-}
-
-function findBenchmark(id: string): Benchmark {
-  const benchmark = benchmarks.find((candidate) => candidate.id === id)
-
-  if (!benchmark) {
-    throw new Error(`Unknown benchmark: ${id}`)
-  }
-
-  return benchmark
 }
 
 function findScenario(id: string): Scenario {
