@@ -37,3 +37,21 @@ Conclusion: the common-case losses in the `2bf128b53ad7` report were between-run
 drift, not implementation cost. The adaptive engine's fully-different gain is real. Deltas below
 the drift floor must be confirmed with interleaved same-period A/B runs before being treated as
 regressions or wins.
+
+## Interleaved A/B: equal-short lanes across `38ab1825c78d` → `300e14dba1be`
+
+- Date: 2026-08-04, Node.js 26.0.0, same machine as above
+
+The `300e14dba1be` official report showed -12.6% for the equal-short range lane and +13.6% for the
+equal-short materialized lane, although that fast path executes no changed code. Six
+order-alternated repetitions per side, one isolated worker per repetition, measured per-repetition
+medians of:
+
+- `rift-ranges` equal-short: before 9.64-9.73 ns/op, after 9.59-9.70 ns/op — delta 0.1%.
+- `rift-materialized` equal-short: before 22.62-22.95 ns/op, after 22.50-22.95 ns/op — delta
+  -0.0%.
+
+Both official-table deltas were between-run drift. Note the absolute level itself moved between
+runs (the official runs measured 9.85 and 11.28 ns/op for the same range lane): per-run state can
+shift this cell by more than 10% in either direction, which is why only interleaved comparisons
+resolve it.

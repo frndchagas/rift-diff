@@ -52,6 +52,16 @@ Google's diff-match-patch surrounds Myers bisect with equality, affix, containme
 and half-match shortcuts followed by optional cleanup. The archived `fast-diff` package is a useful
 JavaScript implementation reference for those practical layers.
 
+Two engine-level findings from isolated per-process microexperiments on this project (Node.js 26
+and Bun 1.4, Apple M4 Max): indexing a JavaScript string inside a snake scan costs roughly 1.35×
+(V8) to 1.7× (JavaScriptCore) more than comparing `charCodeAt` values, because each access
+materializes a single-character string; and a monomorphic index-equality closure — the shape
+`fast-myers-diff` uses — is inlined to the same cost as a hand-written `charCodeAt` loop on both
+engines. A shared generic core taking an index-equality closure therefore keeps one code path
+without giving up the specialized comparison. `fast-myers-diff` itself derives its remaining
+repetitive-input advantage from its bidirectional overlap search, which halves snake work for
+small distances, not from its comparison style.
+
 ## Proposed adaptive architecture
 
 1. Preserve equality and affix trimming before workspace allocation.
