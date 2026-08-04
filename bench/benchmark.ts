@@ -39,6 +39,7 @@ interface Profile {
   readonly warmupMilliseconds: number
   readonly sampleMilliseconds: number
   readonly sampleCount: number
+  readonly memorySampleCount: number
 }
 
 interface WorkerResult {
@@ -55,6 +56,34 @@ interface BenchmarkResult extends WorkerResult {
   readonly medianOperationsPerSecond: number
   readonly relativeStandardDeviation: number
   readonly editDistance: number
+}
+
+interface MemoryWorkerResult {
+  readonly benchmarkId: string
+  readonly scenarioId: string
+  readonly peakResidentBytes: number
+  readonly checksum: number
+}
+
+interface MemoryControlResult {
+  readonly peakResidentBytes: number
+}
+
+interface BenchmarkMemoryResult {
+  readonly benchmarkId: string
+  readonly scenarioId: string
+  readonly peakResidentByteSamples: readonly number[]
+  readonly medianPeakResidentBytes: number
+  readonly incrementalPeakResidentBytes: number
+}
+
+interface MemoryReport {
+  readonly metric: 'incremental-peak-rss'
+  readonly unit: 'bytes'
+  readonly sampleCount: number
+  readonly controlPeakResidentByteSamples: readonly number[]
+  readonly medianControlPeakResidentBytes: number
+  readonly results: readonly BenchmarkMemoryResult[]
 }
 
 interface BenchmarkReport {
@@ -88,6 +117,7 @@ interface BenchmarkReport {
     readonly lane: Benchmark['lane']
   }[]
   readonly results: readonly BenchmarkResult[]
+  readonly memory?: MemoryReport
 }
 
 const paragraph = 'The quick brown fox jumps over the lazy dog. '
@@ -204,6 +234,7 @@ const profiles: Readonly<Record<string, Profile>> = {
     warmupMilliseconds: 30,
     sampleMilliseconds: 15,
     sampleCount: 3,
+    memorySampleCount: 2,
   },
   standard: {
     name: 'standard',
@@ -211,6 +242,7 @@ const profiles: Readonly<Record<string, Profile>> = {
     warmupMilliseconds: 150,
     sampleMilliseconds: 50,
     sampleCount: 7,
+    memorySampleCount: 5,
   },
   full: {
     name: 'full',
@@ -218,6 +250,7 @@ const profiles: Readonly<Record<string, Profile>> = {
     warmupMilliseconds: 500,
     sampleMilliseconds: 200,
     sampleCount: 15,
+    memorySampleCount: 9,
   },
 }
 
@@ -230,8 +263,20 @@ if (!profile) {
 
 const workerBenchmarkId = readArgument('--worker-benchmark')
 const workerScenarioId = readArgument('--worker-scenario')
+const memoryBenchmarkId = readArgument('--memory-benchmark')
+const memoryScenarioId = readArgument('--memory-scenario')
 
-if (workerBenchmarkId || workerScenarioId) {
+if (process.argv.includes('--memory-control')) {
+  process.stdout.write(`${JSON.stringify({ peakResidentBytes: readPeakResidentBytes() })}\n`)
+} else if (memoryBenchmarkId || memoryScenarioId) {
+  if (!memoryBenchmarkId || !memoryScenarioId) {
+    throw new Error('Memory benchmark and scenario must be provided together')
+  }
+
+  const benchmark = findBenchmark(memoryBenchmarkId)
+  const scenario = findScenario(memoryScenarioId)
+  process.stdout.write(`${JSON.stringify(measureMemoryWorker(benchmark, scenario))}\n`)
+} else if (workerBenchmarkId || workerScenarioId) {
   if (!workerBenchmarkId || !workerScenarioId) {
     throw new Error('Worker benchmark and scenario must be provided together')
   }
@@ -252,27 +297,16 @@ function runController(selectedProfile: Profile): void {
   const results: BenchmarkResult[] = []
 
   for (const { benchmark, scenario } of combinations) {
-    const execution = spawnSync(
-      process.execPath,
-      [
-        process.argv[1]!,
+    const workerResult: WorkerResult = JSON.parse(
+      runWorker([
         '--profile',
         selectedProfile.name,
         '--worker-benchmark',
         benchmark.id,
         '--worker-scenario',
         scenario.id,
-      ],
-      { encoding: 'utf8', maxBuffer: 1024 * 1024 },
+      ]),
     )
-
-    if (execution.status !== 0) {
-      throw new Error(
-        `Benchmark worker failed for ${benchmark.id}/${scenario.id}: ${execution.stderr}`,
-      )
-    }
-
-    const workerResult: WorkerResult = JSON.parse(execution.stdout)
     const samples = workerResult.samplesNanosecondsPerOperation.toSorted(
       (left, right) => left - right,
     )
@@ -326,6 +360,7 @@ function runController(selectedProfile: Profile): void {
       lane: benchmark.lane,
     })),
     results,
+    memory: measureMemory(selectedProfile),
   }
 
   const comparisonPath = readArgument('--compare')
@@ -370,6 +405,84 @@ function measureWorker(
     samplesNanosecondsPerOperation,
     checksum,
   }
+}
+
+function measureMemory(selectedProfile: Profile): MemoryReport {
+  const controlPeakResidentByteSamples = Array.from(
+    { length: selectedProfile.memorySampleCount },
+    () => {
+      const control: MemoryControlResult = JSON.parse(runWorker(['--memory-control']))
+      return control.peakResidentBytes
+    },
+  ).toSorted((left, right) => left - right)
+  const medianControlPeakResidentBytes = percentile(controlPeakResidentByteSamples, 0.5)
+  const combinations = shuffle(
+    scenarios.flatMap((scenario) => benchmarks.map((benchmark) => ({ benchmark, scenario }))),
+    0xc0ffee,
+  )
+  const results: BenchmarkMemoryResult[] = []
+
+  for (const { benchmark, scenario } of combinations) {
+    const peakResidentByteSamples = Array.from(
+      { length: selectedProfile.memorySampleCount },
+      () => {
+        const workerResult: MemoryWorkerResult = JSON.parse(
+          runWorker(['--memory-benchmark', benchmark.id, '--memory-scenario', scenario.id]),
+        )
+        return workerResult.peakResidentBytes
+      },
+    ).toSorted((left, right) => left - right)
+    const medianPeakResidentBytes = percentile(peakResidentByteSamples, 0.5)
+
+    results.push({
+      benchmarkId: benchmark.id,
+      scenarioId: scenario.id,
+      peakResidentByteSamples,
+      medianPeakResidentBytes,
+      incrementalPeakResidentBytes: Math.max(
+        0,
+        medianPeakResidentBytes - medianControlPeakResidentBytes,
+      ),
+    })
+  }
+
+  return {
+    metric: 'incremental-peak-rss',
+    unit: 'bytes',
+    sampleCount: selectedProfile.memorySampleCount,
+    controlPeakResidentByteSamples,
+    medianControlPeakResidentBytes,
+    results,
+  }
+}
+
+function measureMemoryWorker(benchmark: Benchmark, scenario: Scenario): MemoryWorkerResult {
+  const output = benchmark.run(scenario.before, scenario.after)
+
+  return {
+    benchmarkId: benchmark.id,
+    scenarioId: scenario.id,
+    peakResidentBytes: readPeakResidentBytes(),
+    checksum: Math.imul(output.length, 16_777_619) >>> 0,
+  }
+}
+
+function runWorker(arguments_: readonly string[]): string {
+  const execution = spawnSync(process.execPath, [process.argv[1]!, ...arguments_], {
+    encoding: 'utf8',
+    maxBuffer: 1024 * 1024,
+  })
+
+  if (execution.status !== 0) {
+    throw new Error(`Benchmark worker failed for ${arguments_.join(' ')}: ${execution.stderr}`)
+  }
+
+  return execution.stdout
+}
+
+function readPeakResidentBytes(): number {
+  const maxResidentSetSize = process.resourceUsage().maxRSS
+  return process.versions.bun ? maxResidentSetSize : maxResidentSetSize * 1024
 }
 
 function calibrateIterations(
@@ -517,6 +630,10 @@ function printReport(report: BenchmarkReport, comparison: BenchmarkReport | unde
     }
   }
 
+  if (report.memory) {
+    printMemoryReport(report, report.memory, comparison?.memory)
+  }
+
   const unstableResults = report.results.filter(
     (result) => result.relativeStandardDeviation >= 0.05,
   )
@@ -541,6 +658,61 @@ function printReport(report: BenchmarkReport, comparison: BenchmarkReport | unde
   }
 }
 
+function printMemoryReport(
+  report: BenchmarkReport,
+  memory: MemoryReport,
+  comparison: MemoryReport | undefined,
+): void {
+  console.log('')
+  console.log('## Incremental peak resident memory')
+  console.log(
+    `${memory.sampleCount} isolated samples · empty-worker median ${formatBytes(memory.medianControlPeakResidentBytes)} · lower is better`,
+  )
+
+  if (comparison) {
+    console.log(
+      '| Scenario | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |',
+    )
+    console.log('| --- | ---: | ---: | ---: | ---: | ---: | ---: |')
+  } else {
+    console.log('| Scenario | rift-diff | fast-diff | fast-myers-diff | jsdiff |')
+    console.log('| --- | ---: | ---: | ---: | ---: |')
+  }
+
+  for (const scenario of report.scenarios) {
+    const currentRift = findMemoryResult(memory.results, 'rift-materialized', scenario.id)
+    const fastDiffResult = findMemoryResult(memory.results, 'fast-diff', scenario.id)
+    const fastMyersResult = findMemoryResult(memory.results, 'fast-myers-diff', scenario.id)
+    const jsdiffResult = findMemoryResult(memory.results, 'jsdiff', scenario.id)
+
+    if (comparison) {
+      const previousRift = findMemoryResult(comparison.results, 'rift-materialized', scenario.id)
+      console.log(
+        `| ${scenario.name} | ${formatBytes(previousRift.incrementalPeakResidentBytes)} | ${formatBytes(currentRift.incrementalPeakResidentBytes)} | ${formatByteChange(currentRift, previousRift)} | ${formatBytes(fastDiffResult.incrementalPeakResidentBytes)} | ${formatBytes(fastMyersResult.incrementalPeakResidentBytes)} | ${formatBytes(jsdiffResult.incrementalPeakResidentBytes)} |`,
+      )
+    } else {
+      console.log(
+        `| ${scenario.name} | ${formatBytes(currentRift.incrementalPeakResidentBytes)} | ${formatBytes(fastDiffResult.incrementalPeakResidentBytes)} | ${formatBytes(fastMyersResult.incrementalPeakResidentBytes)} | ${formatBytes(jsdiffResult.incrementalPeakResidentBytes)} |`,
+      )
+    }
+  }
+
+  const currentRanges = report.scenarios.map((scenario) => ({
+    scenario,
+    result: findMemoryResult(memory.results, 'rift-ranges', scenario.id),
+  }))
+  console.log('')
+  console.log('Range API diagnostic:')
+  console.log(
+    currentRanges
+      .map(
+        ({ scenario, result }) =>
+          `${scenario.name} ${formatBytes(result.incrementalPeakResidentBytes)}`,
+      )
+      .join(' · '),
+  )
+}
+
 function readReport(path: string): BenchmarkReport {
   const report: BenchmarkReport = JSON.parse(readFileSync(path, 'utf8'))
 
@@ -562,6 +734,22 @@ function findResult(
 
   if (!result) {
     throw new Error(`Missing result for ${benchmarkId}/${scenarioId}`)
+  }
+
+  return result
+}
+
+function findMemoryResult(
+  results: readonly BenchmarkMemoryResult[],
+  benchmarkId: string,
+  scenarioId: string,
+): BenchmarkMemoryResult {
+  const result = results.find(
+    (candidate) => candidate.benchmarkId === benchmarkId && candidate.scenarioId === scenarioId,
+  )
+
+  if (!result) {
+    throw new Error(`Missing memory result for ${benchmarkId}/${scenarioId}`)
   }
 
   return result
@@ -658,6 +846,28 @@ function formatOperations(operationsPerSecond: number): string {
 
 function formatPercent(ratio: number): string {
   return `${(ratio * 100).toFixed(1)}%`
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) {
+    return '≤ control'
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(0)} KiB`
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MiB`
+}
+
+function formatByteChange(current: BenchmarkMemoryResult, previous: BenchmarkMemoryResult): string {
+  const change = current.incrementalPeakResidentBytes - previous.incrementalPeakResidentBytes
+
+  if (change === 0) {
+    return '0 B'
+  }
+
+  return `${change > 0 ? '+' : '-'}${formatBytes(Math.abs(change))}`
 }
 
 function formatChange(current: BenchmarkResult, previous: BenchmarkResult): string {

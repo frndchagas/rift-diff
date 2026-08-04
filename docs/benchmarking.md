@@ -45,6 +45,12 @@ samples. Reports preserve every raw sample and summarize them with median throug
 and relative standard deviation (RSD). A checksum consumes every returned array length during the
 timed loop.
 
+Memory uses another set of fresh processes and executes one diff per process. The reported value is
+the median peak resident set size above an empty worker that loads the same benchmark bundle and
+fixtures. Node's `process.resourceUsage().maxRSS` value is converted from KiB to bytes; Bun's value
+is already expressed in bytes. This subtraction reduces runtime and module-loading noise without
+pretending to measure JavaScript heap allocations alone.
+
 The `standard` profile uses seven samples with a target of 50 ms per sample. `quick` is only for
 developing the harness. `full` is intended for release evidence.
 
@@ -63,8 +69,9 @@ After every performance change:
 RSD is not shown beside throughput because it can be mistaken for a competitor comparison. Results
 at or above 5% RSD appear in a separate stability warning, while exact RSD remains in the raw JSON.
 
-The report includes runtime, operating system, architecture, CPU, memory, Git commit, dirty state,
-profile parameters, iteration counts, raw samples, edit cost, medians, p95, and RSD.
+The report includes runtime, operating system, architecture, CPU, Git commit, dirty state, profile
+parameters, iteration counts, raw timing samples, edit cost, medians, p95, RSD, empty-worker RSS,
+and raw peak-RSS samples.
 
 ## Commands
 
@@ -78,6 +85,7 @@ Use `--profile quick`, `--profile standard`, or `--profile full` to select the m
 ## Known limitations
 
 - Laptop thermals and background work still affect results even with isolated workers and rotation.
-- Peak resident memory and allocation volume require a separate process-level memory harness.
+- Incremental peak RSS is process-level and includes runtime allocator behavior; it is not the same
+  as algorithm workspace or JavaScript heap allocation volume.
 - Cold-start, browser, real repository corpora, arrays, and typed arrays are not measured yet.
 - Microbenchmarks guide profiling but do not replace workload-level measurements in consuming apps.
