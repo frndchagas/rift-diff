@@ -34,6 +34,9 @@ explicit edit-distance limit. The adaptive, linear-space and cooperative asynchr
 specified in [RFC 0001](docs/rfc-0001-engine.md) and will be implemented before the first stable
 release.
 
+The rationale for keeping the default engine in TypeScript, along with the evidence required for a
+future native backend, is recorded in [ADR 0002](docs/adr-0002-typescript-first.md).
+
 ## Principles
 
 - Zero runtime dependencies
@@ -52,6 +55,7 @@ bun install
 bun run validate
 bun run build
 bun run bench
+bun run bench:node
 ```
 
 ## License

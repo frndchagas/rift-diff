@@ -17,7 +17,8 @@ final performance or memory profile described below.
 
 - Reconstruct the target exactly for every accepted input.
 - Produce minimal insert/delete edit scripts when minimal mode is selected.
-- Avoid copying input data inside the core algorithm.
+- Avoid eagerly copying or tokenizing complete inputs inside the core algorithm. Transient native
+  string probes are allowed only when benchmarks demonstrate lower end-to-end cost.
 - Make expensive work bounded and observable.
 - Support strings, arrays, typed arrays, and custom indexable sequences.
 - Offer explicit UTF-16, code point, grapheme, word, and line semantics.

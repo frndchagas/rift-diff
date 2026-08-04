@@ -48,7 +48,9 @@
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "validate": "bun run lint && bun run typecheck && bun run test && bun run format:check",
-    "bench": "bun run ./bench/benchmark.ts",
+    "bench": "bun run bench:bun",
+    "bench:bun": "bun run ./bench/benchmark.ts",
+    "bench:node": "bun build ./bench/benchmark.ts --outfile ./.bench/benchmark.mjs --target node --format esm && node ./.bench/benchmark.mjs",
     "prepublishOnly": "bun run validate && bun run build"
   },
   "devDependencies": {

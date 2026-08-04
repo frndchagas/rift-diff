@@ -16,6 +16,32 @@ describe('diff', () => {
     expect(diff('abc', '')).toEqual([{ operation: DELETE, value: 'abc' }])
   })
 
+  it('handles common string fast paths', () => {
+    expect(diff('same', 'same')).toEqual([{ operation: EQUAL, value: 'same' }])
+    expect(diff('abc', 'abcdef')).toEqual([
+      { operation: EQUAL, value: 'abc' },
+      { operation: INSERT, value: 'def' },
+    ])
+    expect(diff('def', 'abcdef')).toEqual([
+      { operation: INSERT, value: 'abc' },
+      { operation: EQUAL, value: 'def' },
+    ])
+    expect(diff('abcdef', 'abc')).toEqual([
+      { operation: EQUAL, value: 'abc' },
+      { operation: DELETE, value: 'def' },
+    ])
+    expect(diff('abcdef', 'def')).toEqual([
+      { operation: DELETE, value: 'abc' },
+      { operation: EQUAL, value: 'def' },
+    ])
+    expect(diff('abc', 'axc')).toEqual([
+      { operation: EQUAL, value: 'a' },
+      { operation: DELETE, value: 'b' },
+      { operation: INSERT, value: 'x' },
+      { operation: EQUAL, value: 'c' },
+    ])
+  })
+
   it('supports generic arrays and custom equality', () => {
     const before = [{ id: 1 }, { id: 2 }]
     const after = [{ id: 1 }, { id: 3 }]
@@ -29,6 +55,15 @@ describe('diff', () => {
 
   it('fails explicitly when the edit-distance budget is exceeded', () => {
     expect(() => diff('abc', 'xyz', { maxEditDistance: 5 })).toThrow(DiffLimitError)
+    expect(() => diff('', 'abc', { maxEditDistance: 2 })).toThrow(DiffLimitError)
+    expect(() => diff('abc', '', { maxEditDistance: 2 })).toThrow(DiffLimitError)
+    expect(() => diff('a', 'b', { maxEditDistance: 1 })).toThrow(DiffLimitError)
+    expect(() => diff<number, number[]>([], [1, 2, 3], { maxEditDistance: 2 })).toThrow(
+      DiffLimitError,
+    )
+    expect(() => diff<number, number[]>([1, 2, 3], [], { maxEditDistance: 2 })).toThrow(
+      DiffLimitError,
+    )
     expect(() => diff('abc', 'xyz', { maxEditDistance: -1 })).toThrow(RangeError)
   })
 })

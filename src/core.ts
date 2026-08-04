@@ -17,6 +17,10 @@ export function diffRanges<Element>(
 ): DiffRange[] {
   validateMaxEditDistance(options.maxEditDistance)
 
+  if (typeof before === 'string' && typeof after === 'string' && options.equals === undefined) {
+    return diffStringRanges(before, after, options.maxEditDistance)
+  }
+
   const equals = options.equals ?? Object.is
   const prefixLength = findCommonPrefix(before, after, equals)
   const suffixLength = findCommonSuffix(before, after, prefixLength, equals)
@@ -63,11 +67,13 @@ function appendMiddleRanges<Element>(
   }
 
   if (beforeStart === beforeEnd) {
+    assertDistanceWithinLimit(afterEnd - afterStart, maxEditDistance)
     ranges.push(createRange(INSERT, beforeStart, beforeStart, afterStart, afterEnd))
     return
   }
 
   if (afterStart === afterEnd) {
+    assertDistanceWithinLimit(beforeEnd - beforeStart, maxEditDistance)
     ranges.push(createRange(DELETE, beforeStart, beforeEnd, afterStart, afterStart))
     return
   }
@@ -84,6 +90,54 @@ function appendMiddleRanges<Element>(
       maxEditDistance,
     ),
   )
+}
+
+function diffStringRanges(
+  before: string,
+  after: string,
+  maxEditDistance: number | undefined,
+): DiffRange[] {
+  if (before === after) {
+    return before.length === 0 ? [] : [createRange(EQUAL, 0, before.length, 0, after.length)]
+  }
+
+  const prefixLength = findCommonStringPrefix(before, after)
+  const suffixLength = findCommonStringSuffix(before, after, prefixLength)
+  const beforeMiddleEnd = before.length - suffixLength
+  const afterMiddleEnd = after.length - suffixLength
+  const beforeMiddleLength = beforeMiddleEnd - prefixLength
+  const afterMiddleLength = afterMiddleEnd - prefixLength
+  const ranges: MutableDiffRange[] = []
+
+  if (prefixLength > 0) {
+    ranges.push(createRange(EQUAL, 0, prefixLength, 0, prefixLength))
+  }
+
+  if (beforeMiddleLength === 1 && afterMiddleLength === 1) {
+    assertDistanceWithinLimit(2, maxEditDistance)
+    ranges.push(
+      createRange(DELETE, prefixLength, beforeMiddleEnd, prefixLength, prefixLength),
+      createRange(INSERT, beforeMiddleEnd, beforeMiddleEnd, prefixLength, afterMiddleEnd),
+    )
+  } else {
+    appendMiddleRanges(
+      ranges,
+      before,
+      after,
+      prefixLength,
+      beforeMiddleEnd,
+      prefixLength,
+      afterMiddleEnd,
+      strictEqual,
+      maxEditDistance,
+    )
+  }
+
+  if (suffixLength > 0) {
+    ranges.push(createRange(EQUAL, beforeMiddleEnd, before.length, afterMiddleEnd, after.length))
+  }
+
+  return ranges
 }
 
 function calculateMyersRanges<Element>(
@@ -281,6 +335,32 @@ function findCommonPrefix<Element>(
   return prefixLength
 }
 
+function findCommonStringPrefix(before: string, after: string): number {
+  const maximumPrefix = Math.min(before.length, after.length)
+  if (maximumPrefix === 0 || before.charCodeAt(0) !== after.charCodeAt(0)) {
+    return 0
+  }
+
+  let confirmedLength = 0
+  let upperBound = maximumPrefix
+  let candidateLength = upperBound
+
+  while (confirmedLength < candidateLength) {
+    if (
+      before.substring(confirmedLength, candidateLength) ===
+      after.substring(confirmedLength, candidateLength)
+    ) {
+      confirmedLength = candidateLength
+    } else {
+      upperBound = candidateLength
+    }
+
+    candidateLength = Math.floor((upperBound - confirmedLength) / 2 + confirmedLength)
+  }
+
+  return candidateLength
+}
+
 function findCommonSuffix<Element>(
   before: Indexable<Element>,
   after: Indexable<Element>,
@@ -300,6 +380,35 @@ function findCommonSuffix<Element>(
   return suffixLength
 }
 
+function findCommonStringSuffix(before: string, after: string, prefixLength: number): number {
+  const maximumSuffix = Math.min(before.length, after.length) - prefixLength
+  if (
+    maximumSuffix === 0 ||
+    before.charCodeAt(before.length - 1) !== after.charCodeAt(after.length - 1)
+  ) {
+    return 0
+  }
+
+  let confirmedLength = 0
+  let upperBound = maximumSuffix
+  let candidateLength = upperBound
+
+  while (confirmedLength < candidateLength) {
+    if (
+      before.substring(before.length - candidateLength, before.length - confirmedLength) ===
+      after.substring(after.length - candidateLength, after.length - confirmedLength)
+    ) {
+      confirmedLength = candidateLength
+    } else {
+      upperBound = candidateLength
+    }
+
+    candidateLength = Math.floor((upperBound - confirmedLength) / 2 + confirmedLength)
+  }
+
+  return candidateLength
+}
+
 function validateMaxEditDistance(maxEditDistance: number | undefined): void {
   if (
     maxEditDistance !== undefined &&
@@ -307,6 +416,19 @@ function validateMaxEditDistance(maxEditDistance: number | undefined): void {
   ) {
     throw new RangeError('maxEditDistance must be a non-negative safe integer')
   }
+}
+
+function assertDistanceWithinLimit(
+  editDistance: number,
+  maxEditDistance: number | undefined,
+): void {
+  if (maxEditDistance !== undefined && editDistance > maxEditDistance) {
+    throw new DiffLimitError(maxEditDistance)
+  }
+}
+
+function strictEqual<Element>(before: Element, after: Element): boolean {
+  return before === after
 }
 
 function createRange(

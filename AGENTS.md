@@ -12,6 +12,7 @@ bun run lint
 bun run format:check
 bun run build
 bun run bench
+bun run bench:node
 ```
 
 ## Non-negotiable rules
