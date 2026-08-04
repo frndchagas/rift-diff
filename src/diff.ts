@@ -7,9 +7,8 @@ export function diff<Element, Slice>(
   after: Sliceable<Element, Slice>,
   options: DiffOptions<Element> = {},
 ): DiffChunk<Slice>[] {
-  if (before === after && options.equals === undefined) {
-    validateMaxEditDistance(options.maxEditDistance)
-    return before.length === 0 ? [] : [{ operation: EQUAL, value: before.slice(0, before.length) }]
+  if (before.length === after.length && before === after && options.equals === undefined) {
+    return materializeIdentical(before, options.maxEditDistance)
   }
 
   return diffRanges(before, after, options).map((range) => {
@@ -25,4 +24,12 @@ export function diff<Element, Slice>(
       value: before.slice(range.beforeStart, range.beforeEnd),
     }
   })
+}
+
+function materializeIdentical<Element, Slice>(
+  value: Sliceable<Element, Slice>,
+  maxEditDistance: number | undefined,
+): DiffChunk<Slice>[] {
+  validateMaxEditDistance(maxEditDistance)
+  return value.length === 0 ? [] : [{ operation: EQUAL, value: value.slice(0, value.length) }]
 }
