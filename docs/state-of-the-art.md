@@ -62,6 +62,15 @@ without giving up the specialized comparison. `fast-myers-diff` itself derives i
 repetitive-input advantage from its bidirectional overlap search, which halves snake work for
 small distances, not from its comparison style.
 
+Two further kernel findings. CPU profiles, not intuition, located the dominant costs: the trace
+backtrack was spending half of repetitive-workload time allocating one range per equal element
+(fixed by emitting one range per snake), and the bisect kernel spent per-cell time on defensive
+undefined coalescing, saturation tests, and bounds checks. Replacing those with analytical
+per-step diagonal clamps — `kmin = 2·max(0, d−M) − d`, `kmax = d − 2·max(0, d−N)`, the same
+shape `fast-myers-diff` uses — cost V8 little (+9% on fully different inputs) but freed
+JavaScriptCore dramatically (+127%), confirming that the two engines punish different kernel
+patterns and both runtimes must gate every acceptance.
+
 ## Proposed adaptive architecture
 
 1. Preserve equality and affix trimming before workspace allocation.
