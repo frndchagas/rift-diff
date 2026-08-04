@@ -57,7 +57,9 @@ JavaScript implementation reference for those practical layers.
 1. Preserve equality and affix trimming before workspace allocation.
 2. Detect bounded local edits and containment after trimming.
 3. Use the typed-array Myers trace only below an explicit workspace threshold. Implemented with a
-   32-edit probe and a 1.5 MiB retained-frontier ceiling.
+   32-edit probe and a 1.5 MiB retained-frontier ceiling. Frontiers are sized by the effective
+   distance limit rather than the trimmed input length, so each retained layer stays a few hundred
+   bytes regardless of middle size.
 4. Use bidirectional Myers reconstruction for large exact workloads. Implemented with reusable
    forward/reverse typed arrays and an explicit work stack.
 5. Prototype O(NP) independently for length-imbalanced inputs.

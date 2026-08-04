@@ -1,0 +1,1796 @@
+{
+  "schemaVersion": 2,
+  "label": "trace-frontier",
+  "generatedAt": "2026-08-04T16:46:35.015Z",
+  "commit": "38ab1825c78d",
+  "dirty": false,
+  "runtime": {
+    "name": "Node.js",
+    "version": "26.0.0"
+  },
+  "system": {
+    "platform": "darwin",
+    "release": "25.5.0",
+    "architecture": "arm64",
+    "cpu": "Apple M4 Max",
+    "logicalCpuCount": 14,
+    "totalMemoryBytes": 38654705664
+  },
+  "profile": {
+    "name": "standard",
+    "calibrationMilliseconds": 15,
+    "warmupMilliseconds": 150,
+    "sampleMilliseconds": 50,
+    "sampleCount": 7,
+    "processesPerCell": 3,
+    "memorySampleCount": 5
+  },
+  "scenarios": [
+    {
+      "id": "equal-short",
+      "name": "equal short text",
+      "beforeLength": 45,
+      "afterLength": 45
+    },
+    {
+      "id": "append-character",
+      "name": "single append",
+      "beforeLength": 90,
+      "afterLength": 91
+    },
+    {
+      "id": "middle-replacement",
+      "name": "middle replacement",
+      "beforeLength": 900,
+      "afterLength": 900
+    },
+    {
+      "id": "large-middle-insert",
+      "name": "large text, small insert",
+      "beforeLength": 11250,
+      "afterLength": 11258
+    },
+    {
+      "id": "dispersed-edits",
+      "name": "dispersed replacements",
+      "beforeLength": 4500,
+      "afterLength": 4500
+    },
+    {
+      "id": "contained-delete",
+      "name": "length-imbalanced containment",
+      "beforeLength": 496,
+      "afterLength": 96
+    },
+    {
+      "id": "repetitive-shift",
+      "name": "repetitive shifted text",
+      "beforeLength": 1001,
+      "afterLength": 1001
+    },
+    {
+      "id": "fully-different",
+      "name": "fully different text",
+      "beforeLength": 300,
+      "afterLength": 300
+    }
+  ],
+  "benchmarks": [
+    {
+      "id": "rift-ranges",
+      "name": "rift core ranges",
+      "lane": "ranges"
+    },
+    {
+      "id": "rift-materialized",
+      "name": "rift-diff",
+      "lane": "materialized"
+    },
+    {
+      "id": "fast-diff",
+      "name": "fast-diff",
+      "lane": "materialized"
+    },
+    {
+      "id": "fast-myers-diff",
+      "name": "fast-myers-diff",
+      "lane": "materialized"
+    },
+    {
+      "id": "jsdiff",
+      "name": "jsdiff",
+      "lane": "materialized"
+    }
+  ],
+  "results": [
+    {
+      "benchmarkId": "rift-materialized",
+      "scenarioId": "middle-replacement",
+      "processes": [
+        {
+          "iterationsPerSample": 113281,
+          "samplesNanosecondsPerOperation": [
+            428.8296360378172, 431.469822829954, 421.6380858219828, 416.4036775805301,
+            416.9348081319899, 419.91265084171226, 416.0538837051224
+          ],
+          "checksum": 3020618356
+        },
+        {
+          "iterationsPerSample": 115551,
+          "samplesNanosecondsPerOperation": [
+            409.7974054746391, 408.5724744917824, 409.14617787816616, 407.54551669825486,
+            419.4334795890992, 415.8322558870102, 410.9491393410703
+          ],
+          "checksum": 458333148
+        },
+        {
+          "iterationsPerSample": 113393,
+          "samplesNanosecondsPerOperation": [
+            419.151755399363, 421.1595248383936, 418.63915761995895, 419.4751175116629,
+            421.1249812598658, 426.4923760725974, 421.0015168484833
+          ],
+          "checksum": 712977076
+        }
+      ],
+      "medianNanosecondsPerOperation": 419.91265084171226,
+      "p95NanosecondsPerOperation": 428.8296360378172,
+      "medianOperationsPerSecond": 2381447.660592045,
+      "relativeStandardDeviation": 0.01210025826824291,
+      "editDistance": 2
+    },
+    {
+      "benchmarkId": "rift-materialized",
+      "scenarioId": "dispersed-edits",
+      "processes": [
+        {
+          "iterationsPerSample": 1468,
+          "samplesNanosecondsPerOperation": [
+            32660.848092643046, 32583.645095367836, 33061.364441416896, 32724.341280653953,
+            32678.218664850145, 32455.892370572226, 32915.21866485011
+          ],
+          "checksum": 760793868
+        },
+        {
+          "iterationsPerSample": 1404,
+          "samplesNanosecondsPerOperation": [
+            34375.59330484329, 35891.975071225075, 35699.66737891736, 34633.30982905985,
+            34592.147435897416, 33999.73290598284, 33270.80413105415
+          ],
+          "checksum": 1998348748
+        },
+        {
+          "iterationsPerSample": 1451,
+          "samplesNanosecondsPerOperation": [
+            32900.95933838731, 32595.623707787763, 37610.6705720193, 32430.33563059959,
+            33080.203308063356, 32905.209510682274, 32942.97036526534
+          ],
+          "checksum": 483085129
+        }
+      ],
+      "medianNanosecondsPerOperation": 32905.209510682274,
+      "p95NanosecondsPerOperation": 35891.975071225075,
+      "medianOperationsPerSecond": 30390.324658937734,
+      "relativeStandardDeviation": 0.02556840105562864,
+      "editDistance": 18
+    },
+    {
+      "benchmarkId": "rift-materialized",
+      "scenarioId": "contained-delete",
+      "processes": [
+        {
+          "iterationsPerSample": 586944,
+          "samplesNanosecondsPerOperation": [
+            84.37744145949188, 83.94923536146551, 82.82462551793702, 83.37209341947444,
+            82.88397189510417, 82.76378836822587, 82.49892664376853
+          ],
+          "checksum": 2918244480
+        },
+        {
+          "iterationsPerSample": 590281,
+          "samplesNanosecondsPerOperation": [
+            86.82213894738268, 99.23733950440555, 91.34653664949403, 84.28450348223987,
+            84.52330330808553, 84.46810417411388, 114.58673919709426
+          ],
+          "checksum": 4245396918
+        },
+        {
+          "iterationsPerSample": 566532,
+          "samplesNanosecondsPerOperation": [
+            85.47369610189718, 102.9910931774375, 87.20337068338594, 84.06946474338606,
+            84.59760437186242, 82.42186672597494, 81.69478158338798
+          ],
+          "checksum": 3786621528
+        }
+      ],
+      "medianNanosecondsPerOperation": 84.59760437186242,
+      "p95NanosecondsPerOperation": 102.9910931774375,
+      "medianOperationsPerSecond": 11820665.696446186,
+      "relativeStandardDeviation": 0.01901962101894474,
+      "editDistance": 400
+    },
+    {
+      "benchmarkId": "fast-diff",
+      "scenarioId": "append-character",
+      "processes": [
+        {
+          "iterationsPerSample": 472777,
+          "samplesNanosecondsPerOperation": [
+            105.92881633412796, 104.0381257971518, 104.159307665136, 103.10631016314242,
+            103.31800193325822, 102.96767820769621, 100.9209056278118
+          ],
+          "checksum": 723564156
+        },
+        {
+          "iterationsPerSample": 508459,
+          "samplesNanosecondsPerOperation": [
+            97.96381419150808, 98.03896086016768, 97.99634778812062, 98.06608399103965,
+            98.31921747869542, 101.4111599952011, 96.93980635606793
+          ],
+          "checksum": 477181206
+        },
+        {
+          "iterationsPerSample": 503344,
+          "samplesNanosecondsPerOperation": [
+            97.23436258304464, 99.37984757938902, 97.6663077338758, 98.92563535077394,
+            101.90082130709807, 95.97785013827529, 96.47552171079823
+          ],
+          "checksum": 3314168288
+        }
+      ],
+      "medianNanosecondsPerOperation": 98.03896086016768,
+      "p95NanosecondsPerOperation": 104.159307665136,
+      "medianOperationsPerSecond": 10200026.512177067,
+      "relativeStandardDeviation": 0.025893170562046198,
+      "editDistance": 1
+    },
+    {
+      "benchmarkId": "fast-diff",
+      "scenarioId": "dispersed-edits",
+      "processes": [
+        {
+          "iterationsPerSample": 351,
+          "samplesNanosecondsPerOperation": [
+            139538.10541310537, 139483.38176638173, 144871.5555555556, 138712.60683760687,
+            139338.435897436, 137864.07692307705, 139016.7378917377
+          ],
+          "checksum": 897729845
+        },
+        {
+          "iterationsPerSample": 341,
+          "samplesNanosecondsPerOperation": [
+            140725.1964809385, 139944.89149560116, 144392.59530791783, 139124.99999999994,
+            138935.8504398828, 140613.39296187696, 141575.63636363632
+          ],
+          "checksum": 3730908243
+        },
+        {
+          "iterationsPerSample": 344,
+          "samplesNanosecondsPerOperation": [
+            138595.68895348837, 138819.76744186037, 147224.4418604652, 140617.24709302318,
+            138410.48837209315, 137654.67732558138, 138216.20639534888
+          ],
+          "checksum": 554384696
+        }
+      ],
+      "medianNanosecondsPerOperation": 139338.435897436,
+      "p95NanosecondsPerOperation": 144871.5555555556,
+      "medianOperationsPerSecond": 7176.770670341659,
+      "relativeStandardDeviation": 0.005972233669673438,
+      "editDistance": 18
+    },
+    {
+      "benchmarkId": "fast-myers-diff",
+      "scenarioId": "repetitive-shift",
+      "processes": [
+        {
+          "iterationsPerSample": 9675,
+          "samplesNanosecondsPerOperation": [
+            5047.183462532301, 5020.232558139533, 4939.229043927647, 5238.006098191214,
+            5173.708010335919, 5083.070594315249, 5019.401343669244
+          ],
+          "checksum": 476020113
+        },
+        {
+          "iterationsPerSample": 9820,
+          "samplesNanosecondsPerOperation": [
+            5136.931364562122, 4988.4376782077425, 4967.00183299389, 4961.22708757638,
+            4975.746741344195, 4951.1540733197635, 5051.404480651729
+          ],
+          "checksum": 1241606252
+        },
+        {
+          "iterationsPerSample": 10035,
+          "samplesNanosecondsPerOperation": [
+            4866.865969108121, 4942.426507224712, 5013.303437967119, 4825.880219232691,
+            4766.670852017939, 4759.591429995022, 4840.91519681117
+          ],
+          "checksum": 652666921
+        }
+      ],
+      "medianNanosecondsPerOperation": 4975.746741344195,
+      "p95NanosecondsPerOperation": 5173.708010335919,
+      "medianOperationsPerSecond": 200974.85904796084,
+      "relativeStandardDeviation": 0.01726150256818476,
+      "editDistance": 2
+    },
+    {
+      "benchmarkId": "rift-ranges",
+      "scenarioId": "append-character",
+      "processes": [
+        {
+          "iterationsPerSample": 1307201,
+          "samplesNanosecondsPerOperation": [
+            37.71691040628029, 37.4538804667377, 37.33823872533761, 37.93939646618995,
+            37.66941732755715, 37.57564215449652, 37.27311943610809
+          ],
+          "checksum": 245072314
+        },
+        {
+          "iterationsPerSample": 1328081,
+          "samplesNanosecondsPerOperation": [
+            37.975281628153674, 37.90487929576586, 37.58392748635063, 37.359857568928405,
+            38.066767011951825, 38.00524365607218, 38.24901568503734
+          ],
+          "checksum": 3887941340
+        },
+        {
+          "iterationsPerSample": 1322935,
+          "samplesNanosecondsPerOperation": [
+            37.5557945023754, 37.71283169619069, 37.25387717461555, 37.27406637514316,
+            37.198445123910076, 36.93347216605504, 36.95844844984829
+          ],
+          "checksum": 2644969790
+        }
+      ],
+      "medianNanosecondsPerOperation": 37.57564215449652,
+      "p95NanosecondsPerOperation": 38.066767011951825,
+      "medianOperationsPerSecond": 26612984.972775355,
+      "relativeStandardDeviation": 0.007847633164694593,
+      "editDistance": 1
+    },
+    {
+      "benchmarkId": "jsdiff",
+      "scenarioId": "repetitive-shift",
+      "processes": [
+        {
+          "iterationsPerSample": 2651,
+          "samplesNanosecondsPerOperation": [
+            19184.301395699727, 19466.427763108262, 19450.30177291588, 19026.593738212,
+            18968.062617880045, 19251.728781591857, 19202.62806488117
+          ],
+          "checksum": 1880822978
+        },
+        {
+          "iterationsPerSample": 2575,
+          "samplesNanosecondsPerOperation": [
+            19504.91922330097, 20179.627572815527, 18862.42718446601, 18887.944854368936,
+            18987.31378640777, 19137.912621359224, 18872.152233009736
+          ],
+          "checksum": 127596717
+        },
+        {
+          "iterationsPerSample": 2685,
+          "samplesNanosecondsPerOperation": [
+            19387.05772811917, 19260.925139664818, 18972.50130353816, 18593.59068901303,
+            18620.32923649905, 18591.21638733706, 18304.655493482318
+          ],
+          "checksum": 3093885155
+        }
+      ],
+      "medianNanosecondsPerOperation": 18987.31378640777,
+      "p95NanosecondsPerOperation": 19504.91922330097,
+      "medianOperationsPerSecond": 52666.74429301624,
+      "relativeStandardDeviation": 0.012694648105913137,
+      "editDistance": 2
+    },
+    {
+      "benchmarkId": "rift-ranges",
+      "scenarioId": "repetitive-shift",
+      "processes": [
+        {
+          "iterationsPerSample": 6347,
+          "samplesNanosecondsPerOperation": [
+            7697.823066015434, 7737.645029147622, 7695.28249566725, 7718.633370096106,
+            7668.288167638249, 7703.258704899962, 7787.589884985026
+          ],
+          "checksum": 3939850897
+        },
+        {
+          "iterationsPerSample": 6208,
+          "samplesNanosecondsPerOperation": [
+            7623.402545103098, 7665.545747422674, 7669.89513530928, 7789.082635309278,
+            7722.528672680415, 7677.41221005155, 7676.59326675256
+          ],
+          "checksum": 3863522624
+        },
+        {
+          "iterationsPerSample": 6469,
+          "samplesNanosecondsPerOperation": [
+            7436.975112072959, 7431.261864275777, 7442.404853918692, 7403.179316741381,
+            7443.229247178849, 7462.726078219194, 7475.298809707838
+          ],
+          "checksum": 1845943899
+        }
+      ],
+      "medianNanosecondsPerOperation": 7676.59326675256,
+      "p95NanosecondsPerOperation": 7787.589884985026,
+      "medianOperationsPerSecond": 130266.1174366258,
+      "relativeStandardDeviation": 0.015404607217578468,
+      "editDistance": 2
+    },
+    {
+      "benchmarkId": "rift-ranges",
+      "scenarioId": "middle-replacement",
+      "processes": [
+        {
+          "iterationsPerSample": 129302,
+          "samplesNanosecondsPerOperation": [
+            379.5123741318773, 373.82799956690525, 379.2287976984113, 380.2051940418555,
+            378.45090563177683, 381.90502080400915, 381.50544461802536
+          ],
+          "checksum": 3754338712
+        },
+        {
+          "iterationsPerSample": 126729,
+          "samplesNanosecondsPerOperation": [
+            389.17230468164337, 387.66942846546533, 386.5285372724475, 386.5610870440072,
+            389.5451475195102, 387.6312840786249, 386.8112902334905
+          ],
+          "checksum": 3934205268
+        },
+        {
+          "iterationsPerSample": 127023,
+          "samplesNanosecondsPerOperation": [
+            383.862237547531, 386.19711390850495, 382.45960180439755, 383.1212300134622,
+            389.7525802413736, 381.9324689229514, 381.5270305377768
+          ],
+          "checksum": 2162013340
+        }
+      ],
+      "medianNanosecondsPerOperation": 383.1212300134622,
+      "p95NanosecondsPerOperation": 389.5451475195102,
+      "medianOperationsPerSecond": 2610139.87652123,
+      "relativeStandardDeviation": 0.00866234519536483,
+      "editDistance": 2
+    },
+    {
+      "benchmarkId": "rift-ranges",
+      "scenarioId": "large-middle-insert",
+      "processes": [
+        {
+          "iterationsPerSample": 77541,
+          "samplesNanosecondsPerOperation": [
+            645.257025315639, 644.4816290736512, 659.1464515546609, 646.3392527823991,
+            652.9164184109052, 646.7019641222056, 651.1823809339576
+          ],
+          "checksum": 3650848699
+        },
+        {
+          "iterationsPerSample": 77403,
+          "samplesNanosecondsPerOperation": [
+            636.843313566657, 643.0640026872343, 642.5660762502744, 642.6150536800894,
+            643.227110060333, 644.1616216425723, 644.517434724753
+          ],
+          "checksum": 1145779713
+        },
+        {
+          "iterationsPerSample": 78258,
+          "samplesNanosecondsPerOperation": [
+            640.5617700426798, 641.3247335735648, 640.147537631935, 640.6719951953797,
+            641.7831659383068, 642.7894400572461, 640.7039280329171
+          ],
+          "checksum": 1250354666
+        }
+      ],
+      "medianNanosecondsPerOperation": 643.0640026872343,
+      "p95NanosecondsPerOperation": 652.9164184109052,
+      "medianOperationsPerSecond": 1555055.1668592899,
+      "relativeStandardDeviation": 0.0038340038964520258,
+      "editDistance": 8
+    },
+    {
+      "benchmarkId": "jsdiff",
+      "scenarioId": "equal-short",
+      "processes": [
+        {
+          "iterationsPerSample": 42521,
+          "samplesNanosecondsPerOperation": [
+            1147.5770795606868, 1145.780908257096, 1145.4859481197534, 1143.1233978504733,
+            1142.8088473930522, 1142.6755955880626, 1146.304179111497
+          ],
+          "checksum": 3122322373
+        },
+        {
+          "iterationsPerSample": 44472,
+          "samplesNanosecondsPerOperation": [
+            1044.9599298434966, 1077.584412664149, 1061.4047490555865, 1057.245750134916,
+            1061.1095970498288, 1056.2844936139602, 1053.2713392696533
+          ],
+          "checksum": 1767292440
+        },
+        {
+          "iterationsPerSample": 45552,
+          "samplesNanosecondsPerOperation": [
+            1070.6042983842642, 1064.4263698630143, 1053.407819634704, 1053.0702932911831,
+            1057.988672286618, 1062.3637161924855, 1061.4728003161201
+          ],
+          "checksum": 1987513264
+        }
+      ],
+      "medianNanosecondsPerOperation": 1061.4728003161201,
+      "p95NanosecondsPerOperation": 1146.304179111497,
+      "medianOperationsPerSecond": 942087.2581023152,
+      "relativeStandardDeviation": 0.03734799160872552,
+      "editDistance": 0
+    },
+    {
+      "benchmarkId": "fast-diff",
+      "scenarioId": "large-middle-insert",
+      "processes": [
+        {
+          "iterationsPerSample": 65135,
+          "samplesNanosecondsPerOperation": [
+            751.6440162738925, 761.1908651262764, 762.0979504106856, 759.255131649651,
+            778.0283257849081, 796.2424195900829, 783.3589160973366
+          ],
+          "checksum": 3728490938
+        },
+        {
+          "iterationsPerSample": 64867,
+          "samplesNanosecondsPerOperation": [
+            762.6207008185985, 762.5391185040165, 757.4729831809702, 762.2616276380903,
+            764.2618742966388, 766.5396118211106, 778.6419288698407
+          ],
+          "checksum": 3241287417
+        },
+        {
+          "iterationsPerSample": 66674,
+          "samplesNanosecondsPerOperation": [
+            756.8542460329369, 751.5060893301743, 746.5822509523953, 751.4848366679661,
+            754.4713831478531, 749.9137594864557, 747.8058613552505
+          ],
+          "checksum": 2657391018
+        }
+      ],
+      "medianNanosecondsPerOperation": 762.0979504106856,
+      "p95NanosecondsPerOperation": 783.3589160973366,
+      "medianOperationsPerSecond": 1312167.2869755283,
+      "relativeStandardDeviation": 0.006762212110523176,
+      "editDistance": 8
+    },
+    {
+      "benchmarkId": "jsdiff",
+      "scenarioId": "fully-different",
+      "processes": [
+        {
+          "iterationsPerSample": 8,
+          "samplesNanosecondsPerOperation": [
+            6337703.124999997, 6109895.874999999, 6206406.250000001, 6273229.25, 6820364.624999996,
+            6212536.374999999, 6176406.249999999
+          ],
+          "checksum": 920238928
+        },
+        {
+          "iterationsPerSample": 8,
+          "samplesNanosecondsPerOperation": [
+            6201671.875000003, 6215078.124999998, 6193125.000000002, 5949984.375, 6005244.874999995,
+            6054067.624999994, 6147937.499999997
+          ],
+          "checksum": 3493953888
+        },
+        {
+          "iterationsPerSample": 8,
+          "samplesNanosecondsPerOperation": [
+            5884359.375000003, 5897765.625000006, 5859874.999999995, 5885765.624999997,
+            5914895.874999999, 5963312.500000001, 5898385.500000004
+          ],
+          "checksum": 920238928
+        }
+      ],
+      "medianNanosecondsPerOperation": 6147937.499999997,
+      "p95NanosecondsPerOperation": 6337703.124999997,
+      "medianOperationsPerSecond": 162.6561753433571,
+      "relativeStandardDeviation": 0.022304127038228934,
+      "editDistance": 600
+    },
+    {
+      "benchmarkId": "jsdiff",
+      "scenarioId": "contained-delete",
+      "processes": [
+        {
+          "iterationsPerSample": 63,
+          "samplesNanosecondsPerOperation": [
+            808426.5873015876, 787063.4920634917, 794912.0317460315, 802935.1746031749,
+            799511.2380952383, 797680.5555555554, 776428.5714285708
+          ],
+          "checksum": 4143413373
+        },
+        {
+          "iterationsPerSample": 62,
+          "samplesNanosecondsPerOperation": [
+            766074.5967741935, 786282.9193548381, 787094.7580645159, 779491.2580645164,
+            774059.1451612904, 767176.0645161278, 785520.1612903235
+          ],
+          "checksum": 2717586022
+        },
+        {
+          "iterationsPerSample": 64,
+          "samplesNanosecondsPerOperation": [
+            760575.5156249998, 764923.171875, 777479.8125000002, 772415.3593750005,
+            773204.4218749997, 764719.4062500002, 765998.0468749997
+          ],
+          "checksum": 3230709056
+        }
+      ],
+      "medianNanosecondsPerOperation": 779491.2580645164,
+      "p95NanosecondsPerOperation": 802935.1746031749,
+      "medianOperationsPerSecond": 1282.888024277538,
+      "relativeStandardDeviation": 0.01662056860310918,
+      "editDistance": 400
+    },
+    {
+      "benchmarkId": "fast-myers-diff",
+      "scenarioId": "dispersed-edits",
+      "processes": [
+        {
+          "iterationsPerSample": 1120,
+          "samplesNanosecondsPerOperation": [
+            43814.06249999998, 44017.522321428616, 45238.05803571429, 44196.05714285717,
+            48310.26785714287, 46673.43749999999, 46121.093749999985
+          ],
+          "checksum": 1494744128
+        },
+        {
+          "iterationsPerSample": 1054,
+          "samplesNanosecondsPerOperation": [
+            45251.46204933586, 45040.91555977233, 45140.891840607175, 45227.7428842505,
+            44823.01612903229, 45182.5977229602, 46528.858633776115
+          ],
+          "checksum": 898071206
+        },
+        {
+          "iterationsPerSample": 1119,
+          "samplesNanosecondsPerOperation": [
+            45251.04289544231, 46507.26094727436, 44286.37890974081, 43724.41912421803,
+            43964.3655049151, 43915.62377122428, 43634.42001787309
+          ],
+          "checksum": 2145124917
+        }
+      ],
+      "medianNanosecondsPerOperation": 45182.5977229602,
+      "p95NanosecondsPerOperation": 46673.43749999999,
+      "medianOperationsPerSecond": 22132.414920708186,
+      "relativeStandardDeviation": 0.013121742181082004,
+      "editDistance": 18
+    },
+    {
+      "benchmarkId": "rift-ranges",
+      "scenarioId": "equal-short",
+      "processes": [
+        {
+          "iterationsPerSample": 4994408,
+          "samplesNanosecondsPerOperation": [
+            9.885347572725339, 9.824129105992135, 9.85143444428249, 9.869596356565175,
+            9.853787075465192, 9.870464127079714, 9.78689566411073
+          ],
+          "checksum": 2776071304
+        },
+        {
+          "iterationsPerSample": 4914489,
+          "samplesNanosecondsPerOperation": [
+            9.90119908702614, 9.889592183439628, 9.918655835835622, 9.878137889819266,
+            9.935035972203824, 10.031044529756809, 9.95144154356638
+          ],
+          "checksum": 389940133
+        },
+        {
+          "iterationsPerSample": 5049697,
+          "samplesNanosecondsPerOperation": [
+            9.808855858084156, 9.763745824749478, 9.799424599139316, 9.761517968305823,
+            9.75269743907407, 9.800208606575792, 9.812684404628646
+          ],
+          "checksum": 2495678653
+        }
+      ],
+      "medianNanosecondsPerOperation": 9.853787075465192,
+      "p95NanosecondsPerOperation": 9.95144154356638,
+      "medianOperationsPerSecond": 101483824.67994322,
+      "relativeStandardDeviation": 0.004944452619504122,
+      "editDistance": 0
+    },
+    {
+      "benchmarkId": "jsdiff",
+      "scenarioId": "large-middle-insert",
+      "processes": [
+        {
+          "iterationsPerSample": 253,
+          "samplesNanosecondsPerOperation": [
+            200454.3794466403, 212426.54940711465, 207849.3083003952, 200115.94071146238,
+            198449.43873517794, 200050.39525691702, 200471.015810277
+          ],
+          "checksum": 3670734830
+        },
+        {
+          "iterationsPerSample": 251,
+          "samplesNanosecondsPerOperation": [
+            199413.51394422314, 206862.71713147397, 200636.1195219124, 198544.65737051785,
+            198995.84860557757, 198903.3864541831, 198729.08366533852
+          ],
+          "checksum": 3453723778
+        },
+        {
+          "iterationsPerSample": 251,
+          "samplesNanosecondsPerOperation": [
+            199138.27888446217, 209183.5976095618, 199318.88844621516, 198882.30278884448,
+            197645.08764940247, 197334.66135458148, 199852.2589641434
+          ],
+          "checksum": 3453723778
+        }
+      ],
+      "medianNanosecondsPerOperation": 199138.27888446217,
+      "p95NanosecondsPerOperation": 209183.5976095618,
+      "medianOperationsPerSecond": 5021.636249955685,
+      "relativeStandardDeviation": 0.003290574879726533,
+      "editDistance": 8
+    },
+    {
+      "benchmarkId": "jsdiff",
+      "scenarioId": "append-character",
+      "processes": [
+        {
+          "iterationsPerSample": 22632,
+          "samplesNanosecondsPerOperation": [
+            2184.480646871686, 2188.9323524213505, 2158.669141039235, 2169.1097119123374,
+            2182.1498762813717, 2197.5171880523135, 2202.025892541532
+          ],
+          "checksum": 3543602960
+        },
+        {
+          "iterationsPerSample": 23423,
+          "samplesNanosecondsPerOperation": [
+            2012.4343593903425, 2016.1860137471713, 2015.9138453656662, 2004.3208811851596,
+            2027.9693036758742, 2034.8713657516105, 2033.540750544336
+          ],
+          "checksum": 334832046
+        },
+        {
+          "iterationsPerSample": 22654,
+          "samplesNanosecondsPerOperation": [
+            2047.326079279596, 2067.596583384833, 2066.206144610224, 2054.4293281539685,
+            2068.0840028251073, 2054.5764544892713, 2071.690827226976
+          ],
+          "checksum": 1666178140
+        }
+      ],
+      "medianNanosecondsPerOperation": 2066.206144610224,
+      "p95NanosecondsPerOperation": 2197.5171880523135,
+      "medianOperationsPerSecond": 483978.81431556935,
+      "relativeStandardDeviation": 0.033779697512054827,
+      "editDistance": 1
+    },
+    {
+      "benchmarkId": "fast-diff",
+      "scenarioId": "repetitive-shift",
+      "processes": [
+        {
+          "iterationsPerSample": 197,
+          "samplesNanosecondsPerOperation": [
+            248103.63451776654, 250426.81725888306, 253523.47715736064, 245168.99492385786,
+            244154.6091370558, 242136.842639594, 240935.2791878172
+          ],
+          "checksum": 2180573915
+        },
+        {
+          "iterationsPerSample": 199,
+          "samplesNanosecondsPerOperation": [
+            245482.20603015073, 242539.78391959777, 243145.934673367, 244445.768844221,
+            240732.20100502516, 247431.3216080402, 244438.44221105508
+          ],
+          "checksum": 1591965301
+        },
+        {
+          "iterationsPerSample": 199,
+          "samplesNanosecondsPerOperation": [
+            244419.1809045228, 243375.62814070363, 246740.37185929652, 244130.86432160804,
+            240898.86934673364, 242209.38190954764, 243273.03015075385
+          ],
+          "checksum": 1591965301
+        }
+      ],
+      "medianNanosecondsPerOperation": 244438.44221105508,
+      "p95NanosecondsPerOperation": 250426.81725888306,
+      "medianOperationsPerSecond": 4091.009543975786,
+      "relativeStandardDeviation": 0.0030136394471167584,
+      "editDistance": 2
+    },
+    {
+      "benchmarkId": "fast-myers-diff",
+      "scenarioId": "equal-short",
+      "processes": [
+        {
+          "iterationsPerSample": 167767,
+          "samplesNanosecondsPerOperation": [
+            294.7565194585345, 297.25924049425697, 304.440086548606, 301.32813366156654,
+            307.13926457527396, 302.05309745063147, 295.0190383090835
+          ],
+          "checksum": 2670971647
+        },
+        {
+          "iterationsPerSample": 162482,
+          "samplesNanosecondsPerOperation": [
+            306.2752058689578, 305.55307664849045, 306.15134599524896, 305.2438116222102,
+            304.7116972957003, 305.57692544404927, 305.9728646865495
+          ],
+          "checksum": 4225374770
+        },
+        {
+          "iterationsPerSample": 163409,
+          "samplesNanosecondsPerOperation": [
+            297.2936496765782, 294.5487519047298, 301.70818620761395, 299.85420019705157,
+            294.8185228475784, 297.2472446438076, 296.21354392964884
+          ],
+          "checksum": 1450588237
+        }
+      ],
+      "medianNanosecondsPerOperation": 301.32813366156654,
+      "p95NanosecondsPerOperation": 306.2752058689578,
+      "medianOperationsPerSecond": 3318641.335770988,
+      "relativeStandardDeviation": 0.011283966895256433,
+      "editDistance": 0
+    },
+    {
+      "benchmarkId": "fast-diff",
+      "scenarioId": "contained-delete",
+      "processes": [
+        {
+          "iterationsPerSample": 387031,
+          "samplesNanosecondsPerOperation": [
+            131.395914022391, 131.81760634161097, 129.54862272014392, 130.8625794832972,
+            130.70270856856416, 132.52437660032416, 132.55936604561415
+          ],
+          "checksum": 3349352490
+        },
+        {
+          "iterationsPerSample": 385451,
+          "samplesNanosecondsPerOperation": [
+            129.5991578696124, 129.39755247748727, 129.0515318419201, 129.10676843489824,
+            129.24254185356878, 128.84711675414005, 126.86350794264386
+          ],
+          "checksum": 3391441841
+        },
+        {
+          "iterationsPerSample": 394031,
+          "samplesNanosecondsPerOperation": [
+            126.69360786334065, 126.7083046765355, 126.89504886671355, 127.10981623273301,
+            127.50572416891049, 126.46466902350298, 125.76643715849772
+          ],
+          "checksum": 1063481229
+        }
+      ],
+      "medianNanosecondsPerOperation": 129.10676843489824,
+      "p95NanosecondsPerOperation": 132.52437660032416,
+      "medianOperationsPerSecond": 7745527.303661445,
+      "relativeStandardDeviation": 0.014828210100207866,
+      "editDistance": 400
+    },
+    {
+      "benchmarkId": "rift-materialized",
+      "scenarioId": "equal-short",
+      "processes": [
+        {
+          "iterationsPerSample": 2122179,
+          "samplesNanosecondsPerOperation": [
+            23.55672353745844, 23.774031314040887, 23.684029481019277, 23.433559563071732,
+            23.48698342599751, 23.393997396072624, 22.68591999072653
+          ],
+          "checksum": 928281082
+        },
+        {
+          "iterationsPerSample": 2104658,
+          "samplesNanosecondsPerOperation": [
+            23.56546764367419, 23.484080548953813, 23.47841834635366, 23.577603582149692,
+            23.384499999524877, 22.75165751395238, 22.646751633757138
+          ],
+          "checksum": 1406754386
+        },
+        {
+          "iterationsPerSample": 2153011,
+          "samplesNanosecondsPerOperation": [
+            23.371436095774698, 23.408806085988427, 23.408515330390795, 23.404993750612515,
+            23.353766422930487, 23.232192961392226, 22.297223284042676
+          ],
+          "checksum": 1679183514
+        }
+      ],
+      "medianNanosecondsPerOperation": 23.47841834635366,
+      "p95NanosecondsPerOperation": 23.684029481019277,
+      "medianOperationsPerSecond": 42592306.91130887,
+      "relativeStandardDeviation": 0.0022420890255455492,
+      "editDistance": 0
+    },
+    {
+      "benchmarkId": "rift-ranges",
+      "scenarioId": "contained-delete",
+      "processes": [
+        {
+          "iterationsPerSample": 764141,
+          "samplesNanosecondsPerOperation": [
+            64.80174077820719, 66.46177341616277, 65.24532121689585, 66.01912081670793,
+            66.13597228783688, 65.65624014416184, 66.87018495277705
+          ],
+          "checksum": 1653299443
+        },
+        {
+          "iterationsPerSample": 762508,
+          "samplesNanosecondsPerOperation": [
+            65.37936782302609, 65.54401265298205, 66.22252881281251, 65.78887172331305,
+            65.96444365173878, 65.82586674500456, 65.06199541513001
+          ],
+          "checksum": 2460267868
+        },
+        {
+          "iterationsPerSample": 778553,
+          "samplesNanosecondsPerOperation": [
+            64.4288712521819, 64.57417414100264, 65.29495487140886, 64.67746319133056,
+            64.78235906868251, 64.83973088537329, 64.70101072117116
+          ],
+          "checksum": 3604024406
+        }
+      ],
+      "medianNanosecondsPerOperation": 65.78887172331305,
+      "p95NanosecondsPerOperation": 66.46177341616277,
+      "medianOperationsPerSecond": 15200139.078318292,
+      "relativeStandardDeviation": 0.008775635340210525,
+      "editDistance": 400
+    },
+    {
+      "benchmarkId": "fast-myers-diff",
+      "scenarioId": "contained-delete",
+      "processes": [
+        {
+          "iterationsPerSample": 246,
+          "samplesNanosecondsPerOperation": [
+            191877.71138211372, 196613.47967479654, 192778.11382113834, 191590.95528455282,
+            191854.16666666663, 191910.73983739855, 190356.70731707287
+          ],
+          "checksum": 3363568574
+        },
+        {
+          "iterationsPerSample": 261,
+          "samplesNanosecondsPerOperation": [
+            191981.32183908045, 190753.51340996177, 191193.32567049804, 192332.53639846732,
+            190563.8582375479, 191878.35249042138, 192317.8467432952
+          ],
+          "checksum": 2529969950
+        },
+        {
+          "iterationsPerSample": 257,
+          "samplesNanosecondsPerOperation": [
+            187348.41245136195, 187536.31906614776, 186496.26848249015, 188916.01945525297,
+            190017.02334630382, 194583.49416342424, 190162.2918287938
+          ],
+          "checksum": 3887536351
+        }
+      ],
+      "medianNanosecondsPerOperation": 191877.71138211372,
+      "p95NanosecondsPerOperation": 194583.49416342424,
+      "medianOperationsPerSecond": 5211.652738595344,
+      "relativeStandardDeviation": 0.0073146891879520915,
+      "editDistance": 400
+    },
+    {
+      "benchmarkId": "rift-materialized",
+      "scenarioId": "repetitive-shift",
+      "processes": [
+        {
+          "iterationsPerSample": 6310,
+          "samplesNanosecondsPerOperation": [
+            7647.9068145800375, 7611.938668779717, 7578.519492868458, 7507.923930269413,
+            7579.212995245653, 7582.606973058645, 7532.639936608566
+          ],
+          "checksum": 531183790
+        },
+        {
+          "iterationsPerSample": 6226,
+          "samplesNanosecondsPerOperation": [
+            7682.55428846772, 7665.274654673946, 7744.74654673948, 7758.961130742044,
+            7653.549630581434, 7739.1249598458135, 7699.378894956632
+          ],
+          "checksum": 949880842
+        },
+        {
+          "iterationsPerSample": 6343,
+          "samplesNanosecondsPerOperation": [
+            7463.214094277152, 7478.151820904935, 7509.577486993541, 7441.681065741764,
+            7476.568658363552, 7494.633138893275, 7439.6317200063195
+          ],
+          "checksum": 2428132981
+        }
+      ],
+      "medianNanosecondsPerOperation": 7579.212995245653,
+      "p95NanosecondsPerOperation": 7744.74654673948,
+      "medianOperationsPerSecond": 131939.82021976262,
+      "relativeStandardDeviation": 0.012004609117418553,
+      "editDistance": 2
+    },
+    {
+      "benchmarkId": "fast-myers-diff",
+      "scenarioId": "middle-replacement",
+      "processes": [
+        {
+          "iterationsPerSample": 23197,
+          "samplesNanosecondsPerOperation": [
+            2116.333275854636, 2114.0305642971057, 2106.7109971116975, 2106.77923869466,
+            2134.219942233909, 2067.093805233436, 2087.94956244342
+          ],
+          "checksum": 698674948
+        },
+        {
+          "iterationsPerSample": 21785,
+          "samplesNanosecondsPerOperation": [
+            2203.77360569199, 2165.2360339683273, 2094.1607069084225, 2159.7046591691537,
+            2230.3534542116117, 2208.298921276111, 2135.1923800780364
+          ],
+          "checksum": 2193412884
+        },
+        {
+          "iterationsPerSample": 22046,
+          "samplesNanosecondsPerOperation": [
+            2159.123741268256, 2179.597976957272, 2154.10205933049, 2135.2229429374947,
+            2118.218724485169, 2176.2716138982114, 2112.5185521182984
+          ],
+          "checksum": 1827392824
+        }
+      ],
+      "medianNanosecondsPerOperation": 2154.10205933049,
+      "p95NanosecondsPerOperation": 2208.298921276111,
+      "medianOperationsPerSecond": 464230.55753950996,
+      "relativeStandardDeviation": 0.011831457452868998,
+      "editDistance": 2
+    },
+    {
+      "benchmarkId": "fast-myers-diff",
+      "scenarioId": "fully-different",
+      "processes": [
+        {
+          "iterationsPerSample": 83,
+          "samplesNanosecondsPerOperation": [
+            577194.2771084331, 573567.7710843369, 571271.5783132525, 571735.9397590364,
+            563012.0481927713, 572286.6506024092, 570905.6265060244
+          ],
+          "checksum": 66083270
+        },
+        {
+          "iterationsPerSample": 79,
+          "samplesNanosecondsPerOperation": [
+            579185.1265822785, 579391.3544303802, 577513.1772151897, 572613.4050632907,
+            577296.9367088604, 569792.2025316453, 573360.2405063298
+          ],
+          "checksum": 2624441870
+        },
+        {
+          "iterationsPerSample": 80,
+          "samplesNanosecondsPerOperation": [
+            574653.6374999998, 615924.4749999999, 591046.3499999999, 568218.7499999998, 566444.7875,
+            570316.1375000001, 569156.762499999
+          ],
+          "checksum": 3843381024
+        }
+      ],
+      "medianNanosecondsPerOperation": 571735.9397590364,
+      "p95NanosecondsPerOperation": 591046.3499999999,
+      "medianOperationsPerSecond": 1749.0591905442564,
+      "relativeStandardDeviation": 0.005256210778838143,
+      "editDistance": 600
+    },
+    {
+      "benchmarkId": "rift-ranges",
+      "scenarioId": "fully-different",
+      "processes": [
+        {
+          "iterationsPerSample": 96,
+          "samplesNanosecondsPerOperation": [
+            441638.45833333326, 439680.98958333355, 440534.71875000006, 439609.3749999998,
+            437947.0520833332, 441277.7708333338, 445686.62500000047
+          ],
+          "checksum": 2780234688
+        },
+        {
+          "iterationsPerSample": 99,
+          "samplesNanosecondsPerOperation": [
+            454097.6363636364, 440237.3737373739, 435372.0505050505, 460666.24242424226,
+            455873.737373737, 446393.1010101012, 441414.5656565651
+          ],
+          "checksum": 3411052966
+        },
+        {
+          "iterationsPerSample": 100,
+          "samplesNanosecondsPerOperation": [
+            442844.1599999999, 432435.83, 430431.24999999977, 431077.9100000002, 437093.34000000014,
+            435675.42, 429764.1700000003
+          ],
+          "checksum": 832748968
+        }
+      ],
+      "medianNanosecondsPerOperation": 440534.71875000006,
+      "p95NanosecondsPerOperation": 455873.737373737,
+      "medianOperationsPerSecond": 2269.968648186142,
+      "relativeStandardDeviation": 0.013011844280872964,
+      "editDistance": 600
+    },
+    {
+      "benchmarkId": "fast-diff",
+      "scenarioId": "equal-short",
+      "processes": [
+        {
+          "iterationsPerSample": 5243502,
+          "samplesNanosecondsPerOperation": [
+            9.559570111730675, 9.440915250914374, 9.42472854973642, 9.44605666213153,
+            9.486535143879031, 9.419928894849281, 10.493694481283702
+          ],
+          "checksum": 2002005854
+        },
+        {
+          "iterationsPerSample": 5222024,
+          "samplesNanosecondsPerOperation": [
+            9.57455231917739, 9.595816488013075, 9.565224709806008, 9.57677846750609,
+            9.578916718881409, 9.52745219095126, 9.51699149601763
+          ],
+          "checksum": 1557255720
+        },
+        {
+          "iterationsPerSample": 5433763,
+          "samplesNanosecondsPerOperation": [
+            9.375631399455587, 9.342627751707242, 9.370447514917377, 9.308428063572151,
+            9.320842664650637, 9.40942473935651, 9.393260250769126
+          ],
+          "checksum": 3136111930
+        }
+      ],
+      "medianNanosecondsPerOperation": 9.44605666213153,
+      "p95NanosecondsPerOperation": 9.595816488013075,
+      "medianOperationsPerSecond": 105864281.33645633,
+      "relativeStandardDeviation": 0.008902736053038492,
+      "editDistance": 0
+    },
+    {
+      "benchmarkId": "rift-materialized",
+      "scenarioId": "append-character",
+      "processes": [
+        {
+          "iterationsPerSample": 806166,
+          "samplesNanosecondsPerOperation": [
+            50.540149299275875, 51.54867731955947, 50.23071178888719, 49.73748210666286,
+            49.522317984137246, 49.38550745131892, 49.55482617723884
+          ],
+          "checksum": 3725319372
+        },
+        {
+          "iterationsPerSample": 809637,
+          "samplesNanosecondsPerOperation": [
+            50.31843529878205, 50.58810306347162, 49.1028695575919, 49.13755670751216,
+            48.784001966313326, 49.3607530288265, 48.95316296068481
+          ],
+          "checksum": 1297346802
+        },
+        {
+          "iterationsPerSample": 811175,
+          "samplesNanosecondsPerOperation": [
+            49.56493111843928, 51.1341054642956, 48.62390976053255, 48.469658211853215,
+            48.46359663451165, 48.274724936049616, 48.4941597065985
+          ],
+          "checksum": 875849054
+        }
+      ],
+      "medianNanosecondsPerOperation": 49.13755670751216,
+      "p95NanosecondsPerOperation": 51.1341054642956,
+      "medianOperationsPerSecond": 20351032.224748768,
+      "relativeStandardDeviation": 0.010335015551954131,
+      "editDistance": 1
+    },
+    {
+      "benchmarkId": "rift-materialized",
+      "scenarioId": "large-middle-insert",
+      "processes": [
+        {
+          "iterationsPerSample": 72111,
+          "samplesNanosecondsPerOperation": [
+            676.5698021106347, 671.663601946998, 676.9066577914601, 674.6283507370581,
+            672.2385073012441, 671.6237189887815, 677.5208775360212
+          ],
+          "checksum": 2354297101
+        },
+        {
+          "iterationsPerSample": 72814,
+          "samplesNanosecondsPerOperation": [
+            675.9380064273353, 675.7371521960063, 677.1992199302337, 676.9233938528301,
+            679.0635454720247, 673.4791111599424, 667.5038454143429
+          ],
+          "checksum": 1040309524
+        },
+        {
+          "iterationsPerSample": 68835,
+          "samplesNanosecondsPerOperation": [
+            693.4705019248931, 690.8791603108884, 692.1339725430382, 690.0704583424127,
+            697.2040676981183, 691.2266143676915, 691.5510568751353
+          ],
+          "checksum": 1464379257
+        }
+      ],
+      "medianNanosecondsPerOperation": 675.9380064273353,
+      "p95NanosecondsPerOperation": 693.4705019248931,
+      "medianOperationsPerSecond": 1479425.6137267554,
+      "relativeStandardDeviation": 0.011293229926973026,
+      "editDistance": 8
+    },
+    {
+      "benchmarkId": "fast-myers-diff",
+      "scenarioId": "append-character",
+      "processes": [
+        {
+          "iterationsPerSample": 109154,
+          "samplesNanosecondsPerOperation": [
+            461.83755977792845, 457.1919764736062, 460.92637924400395, 461.1920680872895,
+            466.30830752881224, 457.9439690712207, 466.67972772413225
+          ],
+          "checksum": 3633238424
+        },
+        {
+          "iterationsPerSample": 108646,
+          "samplesNanosecondsPerOperation": [
+            450.99642876866164, 446.481002521952, 448.87754726359015, 448.48713252213616,
+            446.12433959832856, 446.27313476796155, 449.2971117206332
+          ],
+          "checksum": 1343049452
+        },
+        {
+          "iterationsPerSample": 105004,
+          "samplesNanosecondsPerOperation": [
+            441.20343034551064, 448.3575292369816, 442.3279970286847, 443.5589025179995,
+            452.8379109367264, 456.09294884004385, 460.1126338044266
+          ],
+          "checksum": 1197416824
+        }
+      ],
+      "medianNanosecondsPerOperation": 448.48713252213616,
+      "p95NanosecondsPerOperation": 466.30830752881224,
+      "medianOperationsPerSecond": 2229718.374251557,
+      "relativeStandardDeviation": 0.013298486499246379,
+      "editDistance": 1
+    },
+    {
+      "benchmarkId": "jsdiff",
+      "scenarioId": "middle-replacement",
+      "processes": [
+        {
+          "iterationsPerSample": 2572,
+          "samplesNanosecondsPerOperation": [
+            18469.673405909805, 18471.584758942456, 18192.81376360807, 18275.871695178845,
+            18268.095645412133, 19021.513608087076, 18879.94090202178
+          ],
+          "checksum": 2561284208
+        },
+        {
+          "iterationsPerSample": 2772,
+          "samplesNanosecondsPerOperation": [
+            17862.268759018756, 17668.395382395378, 17607.53354978355, 17446.112914862904,
+            17462.015873015884, 17639.294733044728, 17827.84704184706
+          ],
+          "checksum": 1230764048
+        },
+        {
+          "iterationsPerSample": 2785,
+          "samplesNanosecondsPerOperation": [
+            17985.38276481149, 17788.5698384201, 17578.12710951526, 17562.49263913824,
+            17592.51956912028, 17737.627289048494, 17716.35260323161
+          ],
+          "checksum": 2052668660
+        }
+      ],
+      "medianNanosecondsPerOperation": 17716.35260323161,
+      "p95NanosecondsPerOperation": 18879.94090202178,
+      "medianOperationsPerSecond": 56445.02694180921,
+      "relativeStandardDeviation": 0.02087891759679456,
+      "editDistance": 2
+    },
+    {
+      "benchmarkId": "rift-materialized",
+      "scenarioId": "fully-different",
+      "processes": [
+        {
+          "iterationsPerSample": 97,
+          "samplesNanosecondsPerOperation": [
+            473241.83505154616, 483062.7113402067, 461640.463917526, 453416.65979381464,
+            470389.17525773187, 467439.43298969034, 480981.9587628868
+          ],
+          "checksum": 1151712122
+        },
+        {
+          "iterationsPerSample": 96,
+          "samplesNanosecondsPerOperation": [
+            442431.86458333326, 451963.96874999977, 445374.56250000023, 432346.35416666657,
+            433350.2604166668, 430238.7083333337, 423240.8854166672
+          ],
+          "checksum": 2780234688
+        },
+        {
+          "iterationsPerSample": 98,
+          "samplesNanosecondsPerOperation": [
+            435556.9693877551, 433844.8163265307, 442700.6734693876, 432357.5714285713,
+            430846.5102040817, 428383.51020408166, 430269.13265306083
+          ],
+          "checksum": 724802116
+        }
+      ],
+      "medianNanosecondsPerOperation": 433350.2604166668,
+      "p95NanosecondsPerOperation": 480981.9587628868,
+      "medianOperationsPerSecond": 2307.602166982659,
+      "relativeStandardDeviation": 0.0397402237449694,
+      "editDistance": 600
+    },
+    {
+      "benchmarkId": "fast-diff",
+      "scenarioId": "middle-replacement",
+      "processes": [
+        {
+          "iterationsPerSample": 95431,
+          "samplesNanosecondsPerOperation": [
+            540.5118148190836, 541.9709842713587, 539.7411847303287, 549.3886472949044,
+            544.2143223899989, 522.8022550324314, 531.4612128134469
+          ],
+          "checksum": 3763674184
+        },
+        {
+          "iterationsPerSample": 94260,
+          "samplesNanosecondsPerOperation": [
+            516.0668151920219, 513.1984298748142, 517.3664120517716, 525.5092297899431,
+            527.474984086569, 519.0974432420961, 538.5118289836623
+          ],
+          "checksum": 763423632
+        },
+        {
+          "iterationsPerSample": 94657,
+          "samplesNanosecondsPerOperation": [
+            518.1603051015775, 516.2230474238567, 515.0398280106065, 525.256547323494,
+            520.5879227104181, 514.681513253114, 522.1378239327253
+          ],
+          "checksum": 2394936692
+        }
+      ],
+      "medianNanosecondsPerOperation": 519.0974432420961,
+      "p95NanosecondsPerOperation": 544.2143223899989,
+      "medianOperationsPerSecond": 1926420.5844558957,
+      "relativeStandardDeviation": 0.019627979009434124,
+      "editDistance": 2
+    },
+    {
+      "benchmarkId": "fast-myers-diff",
+      "scenarioId": "large-middle-insert",
+      "processes": [
+        {
+          "iterationsPerSample": 2263,
+          "samplesNanosecondsPerOperation": [
+            23719.638532920908, 23632.880247459114, 22747.45912505522, 23063.07998232433,
+            23529.441007512145, 23139.563853292104, 23359.091913389308
+          ],
+          "checksum": 904681002
+        },
+        {
+          "iterationsPerSample": 2133,
+          "samplesNanosecondsPerOperation": [
+            22862.20487576184, 23059.638068448206, 21776.234880450073, 22348.53070792312,
+            22360.251758087223, 22613.338021565913, 22477.086263478668
+          ],
+          "checksum": 851700427
+        },
+        {
+          "iterationsPerSample": 2180,
+          "samplesNanosecondsPerOperation": [
+            22746.674311926618, 22724.846788990824, 23025.630733944956, 22873.012385321115,
+            23074.5220183486, 22880.695871559623, 22817.355045871525
+          ],
+          "checksum": 3073711540
+        }
+      ],
+      "medianNanosecondsPerOperation": 22873.012385321115,
+      "p95NanosecondsPerOperation": 23632.880247459114,
+      "medianOperationsPerSecond": 43719.64580589112,
+      "relativeStandardDeviation": 0.01574914863750316,
+      "editDistance": 8
+    },
+    {
+      "benchmarkId": "rift-ranges",
+      "scenarioId": "dispersed-edits",
+      "processes": [
+        {
+          "iterationsPerSample": 1397,
+          "samplesNanosecondsPerOperation": [
+            33494.4824624195, 33797.24409448822, 33789.40014316394, 34193.68861846817,
+            33339.447387258435, 33312.455261274175, 33175.31567644952
+          ],
+          "checksum": 474348339
+        },
+        {
+          "iterationsPerSample": 1475,
+          "samplesNanosecondsPerOperation": [
+            33023.220338983054, 33176.75118644066, 32932.96610169491, 33122.03389830506,
+            32827.28813559326, 32778.756610169476, 32936.89288135599
+          ],
+          "checksum": 1537141345
+        },
+        {
+          "iterationsPerSample": 1479,
+          "samplesNanosecondsPerOperation": [
+            32742.08316430021, 32576.62880324544, 32694.134550371873, 32918.41379310348,
+            32879.02907369848, 32446.33198106827, 32799.6396213658
+          ],
+          "checksum": 1845110877
+        }
+      ],
+      "medianNanosecondsPerOperation": 32936.89288135599,
+      "p95NanosecondsPerOperation": 33797.24409448822,
+      "medianOperationsPerSecond": 30361.09093842463,
+      "relativeStandardDeviation": 0.009645083498717854,
+      "editDistance": 18
+    },
+    {
+      "benchmarkId": "fast-diff",
+      "scenarioId": "fully-different",
+      "processes": [
+        {
+          "iterationsPerSample": 100,
+          "samplesNanosecondsPerOperation": [
+            448683.7500000002, 459800.4199999997, 447581.2499999995, 439557.9200000003,
+            459526.2500000002, 467333.75000000023, 439887.4999999998
+          ],
+          "checksum": 832748968
+        },
+        {
+          "iterationsPerSample": 92,
+          "samplesNanosecondsPerOperation": [
+            443537.1304347827, 440469.20652173914, 439508.15217391314, 445016.74999999965,
+            450254.97826087, 448940.66304347786, 443649.4565217389
+          ],
+          "checksum": 2182304088
+        },
+        {
+          "iterationsPerSample": 101,
+          "samplesNanosecondsPerOperation": [
+            446523.0990099011, 451725.65346534684, 454988.4455445542, 443105.198019802,
+            438347.77227722766, 458806.1089108913, 458886.9603960395
+          ],
+          "checksum": 3835580786
+        }
+      ],
+      "medianNanosecondsPerOperation": 448683.7500000002,
+      "p95NanosecondsPerOperation": 459800.4199999997,
+      "medianOperationsPerSecond": 2228.7412904969246,
+      "relativeStandardDeviation": 0.0074335347757338785,
+      "editDistance": 600
+    },
+    {
+      "benchmarkId": "jsdiff",
+      "scenarioId": "dispersed-edits",
+      "processes": [
+        {
+          "iterationsPerSample": 337,
+          "samplesNanosecondsPerOperation": [
+            102110.03857566773, 101972.79821958451, 104129.82195845695, 104520.52522255204,
+            103501.4836795252, 101344.9554896143, 105086.5489614244
+          ],
+          "checksum": 1549297943
+        },
+        {
+          "iterationsPerSample": 500,
+          "samplesNanosecondsPerOperation": [
+            104495.5, 102611.83199999994, 100721.91599999997, 101442.5, 101265.084,
+            102125.91599999995, 101646.83199999991
+          ],
+          "checksum": 1106716792
+        },
+        {
+          "iterationsPerSample": 506,
+          "samplesNanosecondsPerOperation": [
+            99012.76284584976, 98794.13833992089, 98100.1324110672, 98249.25889328057,
+            98803.27667984192, 98948.2885375493, 99716.98023715404
+          ],
+          "checksum": 1186701852
+        }
+      ],
+      "medianNanosecondsPerOperation": 101646.83199999991,
+      "p95NanosecondsPerOperation": 104520.52522255204,
+      "medianOperationsPerSecond": 9837.984916244128,
+      "relativeStandardDeviation": 0.019070265577471268,
+      "editDistance": 18
+    }
+  ],
+  "memory": {
+    "metric": "incremental-peak-rss",
+    "unit": "bytes",
+    "sampleCount": 5,
+    "controlPeakResidentByteSamples": [51200000, 51265536, 51331072, 51331072, 51478528],
+    "medianControlPeakResidentBytes": 51331072,
+    "results": [
+      {
+        "benchmarkId": "fast-myers-diff",
+        "scenarioId": "fully-different",
+        "peakResidentByteSamples": [53936128, 53985280, 54050816, 54149120, 54247424],
+        "medianPeakResidentBytes": 54050816,
+        "incrementalPeakResidentBytes": 2719744
+      },
+      {
+        "benchmarkId": "rift-materialized",
+        "scenarioId": "large-middle-insert",
+        "peakResidentByteSamples": [51363840, 51445760, 51445760, 51527680, 51544064],
+        "medianPeakResidentBytes": 51445760,
+        "incrementalPeakResidentBytes": 114688
+      },
+      {
+        "benchmarkId": "fast-diff",
+        "scenarioId": "middle-replacement",
+        "peakResidentByteSamples": [51412992, 51429376, 51462144, 51462144, 51560448],
+        "medianPeakResidentBytes": 51462144,
+        "incrementalPeakResidentBytes": 131072
+      },
+      {
+        "benchmarkId": "jsdiff",
+        "scenarioId": "equal-short",
+        "peakResidentByteSamples": [51462144, 51527680, 51560448, 51593216, 51642368],
+        "medianPeakResidentBytes": 51560448,
+        "incrementalPeakResidentBytes": 229376
+      },
+      {
+        "benchmarkId": "jsdiff",
+        "scenarioId": "dispersed-edits",
+        "peakResidentByteSamples": [52756480, 52871168, 55361536, 55394304, 55443456],
+        "medianPeakResidentBytes": 55361536,
+        "incrementalPeakResidentBytes": 4030464
+      },
+      {
+        "benchmarkId": "rift-materialized",
+        "scenarioId": "contained-delete",
+        "peakResidentByteSamples": [51462144, 51511296, 51527680, 51527680, 51544064],
+        "medianPeakResidentBytes": 51527680,
+        "incrementalPeakResidentBytes": 196608
+      },
+      {
+        "benchmarkId": "fast-myers-diff",
+        "scenarioId": "equal-short",
+        "peakResidentByteSamples": [51331072, 51445760, 51445760, 51494912, 51511296],
+        "medianPeakResidentBytes": 51445760,
+        "incrementalPeakResidentBytes": 114688
+      },
+      {
+        "benchmarkId": "rift-ranges",
+        "scenarioId": "dispersed-edits",
+        "peakResidentByteSamples": [51691520, 51773440, 51855360, 52002816, 52035584],
+        "medianPeakResidentBytes": 51855360,
+        "incrementalPeakResidentBytes": 524288
+      },
+      {
+        "benchmarkId": "fast-diff",
+        "scenarioId": "equal-short",
+        "peakResidentByteSamples": [51232768, 51445760, 51445760, 51494912, 51511296],
+        "medianPeakResidentBytes": 51445760,
+        "incrementalPeakResidentBytes": 114688
+      },
+      {
+        "benchmarkId": "jsdiff",
+        "scenarioId": "large-middle-insert",
+        "peakResidentByteSamples": [56197120, 56295424, 56311808, 56311808, 56328192],
+        "medianPeakResidentBytes": 56311808,
+        "incrementalPeakResidentBytes": 4980736
+      },
+      {
+        "benchmarkId": "rift-materialized",
+        "scenarioId": "fully-different",
+        "peakResidentByteSamples": [53018624, 53067776, 53149696, 53198848, 53198848],
+        "medianPeakResidentBytes": 53149696,
+        "incrementalPeakResidentBytes": 1818624
+      },
+      {
+        "benchmarkId": "rift-ranges",
+        "scenarioId": "repetitive-shift",
+        "peakResidentByteSamples": [51642368, 51658752, 51658752, 51724288, 51724288],
+        "medianPeakResidentBytes": 51658752,
+        "incrementalPeakResidentBytes": 327680
+      },
+      {
+        "benchmarkId": "rift-ranges",
+        "scenarioId": "large-middle-insert",
+        "peakResidentByteSamples": [51445760, 51494912, 51511296, 51511296, 51691520],
+        "medianPeakResidentBytes": 51511296,
+        "incrementalPeakResidentBytes": 180224
+      },
+      {
+        "benchmarkId": "fast-diff",
+        "scenarioId": "append-character",
+        "peakResidentByteSamples": [51331072, 51445760, 51462144, 51544064, 51675136],
+        "medianPeakResidentBytes": 51462144,
+        "incrementalPeakResidentBytes": 131072
+      },
+      {
+        "benchmarkId": "fast-myers-diff",
+        "scenarioId": "append-character",
+        "peakResidentByteSamples": [51331072, 51445760, 51527680, 51576832, 51642368],
+        "medianPeakResidentBytes": 51527680,
+        "incrementalPeakResidentBytes": 196608
+      },
+      {
+        "benchmarkId": "rift-ranges",
+        "scenarioId": "contained-delete",
+        "peakResidentByteSamples": [51412992, 51478528, 51576832, 51576832, 51609600],
+        "medianPeakResidentBytes": 51576832,
+        "incrementalPeakResidentBytes": 245760
+      },
+      {
+        "benchmarkId": "jsdiff",
+        "scenarioId": "middle-replacement",
+        "peakResidentByteSamples": [51478528, 51494912, 51625984, 51675136, 51871744],
+        "medianPeakResidentBytes": 51625984,
+        "incrementalPeakResidentBytes": 294912
+      },
+      {
+        "benchmarkId": "fast-myers-diff",
+        "scenarioId": "contained-delete",
+        "peakResidentByteSamples": [53723136, 53788672, 53870592, 53886976, 53886976],
+        "medianPeakResidentBytes": 53870592,
+        "incrementalPeakResidentBytes": 2539520
+      },
+      {
+        "benchmarkId": "rift-ranges",
+        "scenarioId": "middle-replacement",
+        "peakResidentByteSamples": [51363840, 51511296, 51511296, 51527680, 51527680],
+        "medianPeakResidentBytes": 51511296,
+        "incrementalPeakResidentBytes": 180224
+      },
+      {
+        "benchmarkId": "fast-myers-diff",
+        "scenarioId": "dispersed-edits",
+        "peakResidentByteSamples": [51429376, 51609600, 51625984, 51773440, 51789824],
+        "medianPeakResidentBytes": 51625984,
+        "incrementalPeakResidentBytes": 294912
+      },
+      {
+        "benchmarkId": "fast-diff",
+        "scenarioId": "large-middle-insert",
+        "peakResidentByteSamples": [51396608, 51445760, 51544064, 51691520, 51724288],
+        "medianPeakResidentBytes": 51544064,
+        "incrementalPeakResidentBytes": 212992
+      },
+      {
+        "benchmarkId": "rift-materialized",
+        "scenarioId": "middle-replacement",
+        "peakResidentByteSamples": [51511296, 51527680, 51544064, 51593216, 51707904],
+        "medianPeakResidentBytes": 51544064,
+        "incrementalPeakResidentBytes": 212992
+      },
+      {
+        "benchmarkId": "jsdiff",
+        "scenarioId": "append-character",
+        "peakResidentByteSamples": [51445760, 51445760, 51527680, 51658752, 51724288],
+        "medianPeakResidentBytes": 51527680,
+        "incrementalPeakResidentBytes": 196608
+      },
+      {
+        "benchmarkId": "rift-materialized",
+        "scenarioId": "repetitive-shift",
+        "peakResidentByteSamples": [51560448, 51740672, 51740672, 51789824, 51806208],
+        "medianPeakResidentBytes": 51740672,
+        "incrementalPeakResidentBytes": 409600
+      },
+      {
+        "benchmarkId": "fast-diff",
+        "scenarioId": "contained-delete",
+        "peakResidentByteSamples": [51429376, 51429376, 51445760, 51478528, 51527680],
+        "medianPeakResidentBytes": 51445760,
+        "incrementalPeakResidentBytes": 114688
+      },
+      {
+        "benchmarkId": "fast-myers-diff",
+        "scenarioId": "repetitive-shift",
+        "peakResidentByteSamples": [51478528, 51511296, 51527680, 51675136, 51871744],
+        "medianPeakResidentBytes": 51527680,
+        "incrementalPeakResidentBytes": 196608
+      },
+      {
+        "benchmarkId": "rift-materialized",
+        "scenarioId": "append-character",
+        "peakResidentByteSamples": [51445760, 51462144, 51462144, 51544064, 51658752],
+        "medianPeakResidentBytes": 51462144,
+        "incrementalPeakResidentBytes": 131072
+      },
+      {
+        "benchmarkId": "rift-ranges",
+        "scenarioId": "fully-different",
+        "peakResidentByteSamples": [52920320, 53067776, 53100544, 53133312, 53215232],
+        "medianPeakResidentBytes": 53100544,
+        "incrementalPeakResidentBytes": 1769472
+      },
+      {
+        "benchmarkId": "jsdiff",
+        "scenarioId": "fully-different",
+        "peakResidentByteSamples": [58818560, 58818560, 58851328, 58867712, 59031552],
+        "medianPeakResidentBytes": 58851328,
+        "incrementalPeakResidentBytes": 7520256
+      },
+      {
+        "benchmarkId": "fast-diff",
+        "scenarioId": "repetitive-shift",
+        "peakResidentByteSamples": [52543488, 52576256, 52609024, 52625408, 52740096],
+        "medianPeakResidentBytes": 52609024,
+        "incrementalPeakResidentBytes": 1277952
+      },
+      {
+        "benchmarkId": "fast-diff",
+        "scenarioId": "dispersed-edits",
+        "peakResidentByteSamples": [52166656, 52232192, 52248576, 52314112, 52314112],
+        "medianPeakResidentBytes": 52248576,
+        "incrementalPeakResidentBytes": 917504
+      },
+      {
+        "benchmarkId": "jsdiff",
+        "scenarioId": "contained-delete",
+        "peakResidentByteSamples": [53411840, 53460992, 53575680, 53608448, 53706752],
+        "medianPeakResidentBytes": 53575680,
+        "incrementalPeakResidentBytes": 2244608
+      },
+      {
+        "benchmarkId": "rift-ranges",
+        "scenarioId": "append-character",
+        "peakResidentByteSamples": [51429376, 51445760, 51445760, 51625984, 51789824],
+        "medianPeakResidentBytes": 51445760,
+        "incrementalPeakResidentBytes": 114688
+      },
+      {
+        "benchmarkId": "fast-diff",
+        "scenarioId": "fully-different",
+        "peakResidentByteSamples": [53313536, 53329920, 53346304, 53526528, 53673984],
+        "medianPeakResidentBytes": 53346304,
+        "incrementalPeakResidentBytes": 2015232
+      },
+      {
+        "benchmarkId": "fast-myers-diff",
+        "scenarioId": "large-middle-insert",
+        "peakResidentByteSamples": [51412992, 51445760, 51544064, 51691520, 51724288],
+        "medianPeakResidentBytes": 51544064,
+        "incrementalPeakResidentBytes": 212992
+      },
+      {
+        "benchmarkId": "rift-materialized",
+        "scenarioId": "equal-short",
+        "peakResidentByteSamples": [51265536, 51380224, 51429376, 51478528, 51544064],
+        "medianPeakResidentBytes": 51429376,
+        "incrementalPeakResidentBytes": 98304
+      },
+      {
+        "benchmarkId": "jsdiff",
+        "scenarioId": "repetitive-shift",
+        "peakResidentByteSamples": [51724288, 51773440, 51789824, 51822592, 51888128],
+        "medianPeakResidentBytes": 51789824,
+        "incrementalPeakResidentBytes": 458752
+      },
+      {
+        "benchmarkId": "fast-myers-diff",
+        "scenarioId": "middle-replacement",
+        "peakResidentByteSamples": [51347456, 51396608, 51544064, 51609600, 51740672],
+        "medianPeakResidentBytes": 51544064,
+        "incrementalPeakResidentBytes": 212992
+      },
+      {
+        "benchmarkId": "rift-ranges",
+        "scenarioId": "equal-short",
+        "peakResidentByteSamples": [51396608, 51462144, 51462144, 51494912, 51544064],
+        "medianPeakResidentBytes": 51462144,
+        "incrementalPeakResidentBytes": 131072
+      },
+      {
+        "benchmarkId": "rift-materialized",
+        "scenarioId": "dispersed-edits",
+        "peakResidentByteSamples": [51920896, 51937280, 51986432, 52035584, 52150272],
+        "medianPeakResidentBytes": 51986432,
+        "incrementalPeakResidentBytes": 655360
+      }
+    ]
+  }
+}
