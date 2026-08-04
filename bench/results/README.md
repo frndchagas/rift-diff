@@ -12,6 +12,136 @@ inputs instead of materialized text. Its raw results remain available in the JSO
 Values are median operations per second. Higher is better. Statistical variation is reported
 separately instead of appearing as an ambiguous percentage beside throughput.
 
+## Multiprocess measurement baseline: `b9b4baefdb39` / `529b9e93756f`
+
+- Date: 2026-08-04
+- Machine: Apple M4 Max, 14 logical CPUs, 36 GiB RAM
+- System: macOS 26.5, arm64
+- Runtimes: Bun 1.4.0 (measured at `b9b4baefdb39`) and Node.js 26.0.0 (measured at
+  `529b9e93756f`, which only adds the Bun result JSON on top of `b9b4baefdb39`)
+- Throughput profile: standard, three isolated processes per cell, seven samples × 50 ms per
+  process, cell median = median of per-process medians
+- Memory profile: five fresh processes per cell
+
+This is a measurement re-baseline, not an engine change: the diff implementation is identical to
+the one measured in the adaptive linear-space report below. `Rift before` repeats the
+single-process schema-1 numbers from that report, so `Rift change` here quantifies estimator
+correction plus between-run drift — exactly the drift the exploratory A/B predicted. Node.js runs
+are now pinned to the same major version (26) as the previous report; the shell default had moved
+to 24.11.0, which would otherwise add a runtime-version variable to every comparison.
+
+Values are median operations per second. Higher is better. This report is the `Rift before`
+reference for subsequent optimization work.
+
+### Bun 1.4.0 throughput — materialized output
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |      31.77M |   32.96M |       +3.8% |       115.90M |               2.87M |      1.45M |
+| Single append                 |      18.14M |   20.50M |      +13.0% |        11.23M |               1.45M |     719.1k |
+| Middle replacement            |       2.37M |    2.48M |       +4.6% |         1.60M |              239.1k |      80.4k |
+| Large text, small insert      |       1.55M |    1.58M |       +1.9% |         1.28M |               19.7k |       7.8k |
+| Dispersed replacements        |       16.3k |    17.4k |       +6.4% |          6.0k |               26.8k |      14.2k |
+| Length-imbalanced containment |       9.87M |   10.09M |       +2.2% |         6.87M |                6.1k |       1.1k |
+| Repetitive shifted text       |       83.6k |    85.1k |       +1.8% |          4.1k |              269.6k |      77.6k |
+| Fully different text          |        1.1k |     1.1k |       +2.4% |           594 |                1.9k |        134 |
+
+Low-level range API:
+
+| Scenario                      | Ranges before | Ranges now | Change |
+| ----------------------------- | ------------: | ---------: | -----: |
+| Equal short text              |       111.16M |    112.60M |  +1.3% |
+| Single append                 |        30.43M |     31.89M |  +4.8% |
+| Middle replacement            |         2.64M |      2.73M |  +3.5% |
+| Large text, small insert      |         1.60M |      1.65M |  +3.0% |
+| Dispersed replacements        |         16.5k |      17.3k |  +4.9% |
+| Length-imbalanced containment |        15.33M |     15.31M |  -0.2% |
+| Repetitive shifted text       |         84.4k |      86.0k |  +1.9% |
+| Fully different text          |          1.1k |       1.1k |  +1.3% |
+
+Stability warning: `fast-diff` dispersed replacements measured 7.2% RSD across process medians.
+Every `rift-diff` cell stayed under 5%.
+
+Raw data: [multiprocess-baseline-macos-arm64-bun.json](multiprocess-baseline-macos-arm64-bun.json)
+
+### Node.js 26.0.0 throughput — materialized output
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |      42.49M |   42.71M |       +0.5% |       106.47M |               3.32M |     945.8k |
+| Single append                 |      18.87M |   20.01M |       +6.1% |        10.08M |               2.20M |     485.5k |
+| Middle replacement            |       2.38M |    2.39M |       +0.5% |         1.90M |              459.5k |      56.7k |
+| Large text, small insert      |       1.38M |    1.48M |       +7.5% |         1.32M |               44.1k |       4.8k |
+| Dispersed replacements        |       15.5k |    16.8k |       +7.9% |          7.2k |               22.2k |      10.0k |
+| Length-imbalanced containment |      11.69M |   11.85M |       +1.4% |         7.80M |                5.3k |       1.3k |
+| Repetitive shifted text       |       98.0k |   107.5k |       +9.7% |          4.1k |              198.9k |      52.4k |
+| Fully different text          |        2.2k |     2.3k |       +2.0% |          2.3k |                1.7k |        165 |
+
+Low-level range API:
+
+| Scenario                      | Ranges before | Ranges now | Change |
+| ----------------------------- | ------------: | ---------: | -----: |
+| Equal short text              |        99.51M |    101.17M |  +1.7% |
+| Single append                 |        25.52M |     26.49M |  +3.8% |
+| Middle replacement            |         2.50M |      2.60M |  +3.9% |
+| Large text, small insert      |         1.53M |      1.55M |  +1.3% |
+| Dispersed replacements        |         16.1k |      17.4k |  +8.2% |
+| Length-imbalanced containment |        15.10M |     15.30M |  +1.3% |
+| Repetitive shifted text       |         98.0k |     106.4k |  +8.6% |
+| Fully different text          |          2.1k |       2.3k |  +7.0% |
+
+No cell reached 5% RSD across process medians.
+
+Raw data:
+[multiprocess-baseline-macos-arm64-node.json](multiprocess-baseline-macos-arm64-node.json)
+
+### Incremental peak RSS
+
+Lower is better. `Rift change` is the absolute change from the schema-1 report; `≤ control` means
+no increase above the empty-worker median was measurable. The memory method itself is unchanged,
+so these columns confirm allocator-level variation rather than an engine change.
+
+#### Bun 1.4.0 (empty worker 29.66 MiB)
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |     128 KiB |   80 KiB |     -48 KiB |        32 KiB |             256 KiB |    224 KiB |
+| Single append                 |     112 KiB |  112 KiB |         0 B |       144 KiB |             320 KiB |    272 KiB |
+| Middle replacement            |     128 KiB |  112 KiB |     -16 KiB |       160 KiB |             688 KiB |   1.34 MiB |
+| Large text, small insert      |     160 KiB |  128 KiB |     -32 KiB |       144 KiB |             832 KiB |   5.62 MiB |
+| Dispersed replacements        |    5.80 MiB | 5.77 MiB |     -32 KiB |      3.48 MiB |            4.16 MiB |   3.94 MiB |
+| Length-imbalanced containment |      96 KiB |  128 KiB |     +32 KiB |       144 KiB |            6.22 MiB |   9.27 MiB |
+| Repetitive shifted text       |    2.67 MiB | 2.61 MiB |     -64 KiB |      4.48 MiB |             848 KiB |   2.64 MiB |
+| Fully different text          |    7.36 MiB | 7.55 MiB |    +192 KiB |      4.33 MiB |            7.72 MiB |  18.12 MiB |
+
+#### Node.js 26.0.0 (empty worker 49.08 MiB)
+
+| Scenario                      | Rift before |  Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | --------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |   ≤ control | ≤ control |         0 B |     ≤ control |           ≤ control |     16 KiB |
+| Single append                 |   ≤ control |    48 KiB |     +48 KiB |        64 KiB |           ≤ control |     16 KiB |
+| Middle replacement            |   ≤ control |   208 KiB |    +208 KiB |        32 KiB |              64 KiB |    224 KiB |
+| Large text, small insert      |   ≤ control |    80 KiB |     +80 KiB |       288 KiB |             272 KiB |   4.75 MiB |
+| Dispersed replacements        |    1.66 MiB |  1.66 MiB |         0 B |      1.12 MiB |             368 KiB |   1.16 MiB |
+| Length-imbalanced containment |   ≤ control |    48 KiB |     +48 KiB |     ≤ control |            2.47 MiB |   2.03 MiB |
+| Repetitive shifted text       |     144 KiB |   272 KiB |    +128 KiB |      1.27 MiB |             144 KiB |    320 KiB |
+| Fully different text          |    1.69 MiB |  1.73 MiB |     +48 KiB |      1.95 MiB |            2.45 MiB |   7.33 MiB |
+
+### Interpretation
+
+- The multiprocess estimator removed the instability that motivated it: every `rift-diff`
+  throughput cell now sits at or below 1.4% RSD across process medians on Node.js and below 5% on
+  Bun, versus 12% single-process RSD for dispersed replacements in the previous report.
+- `Rift change` values of +0.5% to +13.0% without any engine change confirm the exploratory A/B
+  conclusion: the schema-1 adaptive report understated common-case throughput because of
+  between-run drift.
+- Competitive position on Node.js: `rift-diff` leads the materialized comparison in single append,
+  middle replacement, large-text small insert, and containment, and ties `fast-diff` on fully
+  different text. It trails `fast-diff` on equal short text (2.5×) and `fast-myers-diff` on
+  dispersed replacements (1.3×) and repetitive shifted text (1.9×).
+- Competitive position on Bun mirrors Node.js, with `fast-diff` ahead on equal short text (3.5×)
+  and `fast-myers-diff` ahead on dispersed replacements (1.5×) and repetitive shifted text (3.2×).
+
 ## Adaptive linear-space Myers: `2bf128b53ad7`
 
 - Benchmark harness: `207860ac9aea`
