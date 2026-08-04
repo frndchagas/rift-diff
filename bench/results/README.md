@@ -8,44 +8,34 @@ between them. Every incumbent is measured again in the same run as `Rift now`.
 
 ## Distance to the leader
 
-Updated after every accepted iteration from the latest official run (currently `8384641a7f1a`,
-2026-08-04). Materialized output, median ops/s; the leader varies by scenario. `leads` means
-`rift-diff` is the fastest measured implementation in that cell.
+Updated after every accepted iteration from the latest official anchored run (Node.js at
+`a697662296d5`, Bun at `36327602feed` — identical engine, the commits differ only in report
+printing; 2026-08-04). Materialized output, median ops/s; the leader varies by scenario. `leads`
+means `rift-diff` is the fastest measured implementation in that cell. This table supersedes all
+pre-anchoring tables.
 
-| Scenario                      | Node.js 26 rift-diff | Node.js 26 standing      | Bun 1.4 rift-diff | Bun 1.4 standing               |
-| ----------------------------- | -------------------: | ------------------------ | ----------------: | ------------------------------ |
-| Equal short text              |               90.64M | 1.18× behind `fast-diff` |           125.78M | leads 1.03×                    |
-| Single append                 |               19.32M | leads 1.82×              |            20.72M | leads 1.79×                    |
-| Middle replacement            |                2.34M | leads 1.25×              |             2.50M | leads 1.49×                    |
-| Large text, small insert      |                1.51M | leads 1.11×              |             1.63M | leads 1.24×                    |
-| Dispersed replacements        |               110.4k | leads 4.78×              |             41.8k | leads 1.53×                    |
-| Length-imbalanced containment |               11.86M | leads 1.51×              |            10.60M | leads 1.48×                    |
-| Repetitive shifted text       |               476.8k | leads 2.28×              |            184.6k | 1.53× behind `fast-myers-diff` |
-| Fully different text          |                 2.6k | leads 1.13×              |              3.0k | leads 1.58×                    |
-| Real code file edit           |                 2.6k | 1.23× behind `fast-diff` |              3.4k | leads 2.62×                    |
-| Real json config edit         |                28.7k | leads 1.19×              |             22.3k | 1.25× behind `fast-myers-diff` |
-| Real log stream update        |                1.78M | leads 1.48×              |             2.07M | leads 1.86×                    |
-| Real prose revision           |                15.2k | leads 1.11×              |             13.3k | leads 1.25×                    |
-
-Sequence scenarios (fast-diff is string-only and does not participate; run `96f2e3dffb9f`):
-
-| Scenario                      | Node.js 26 rift-diff | Node.js 26 standing            | Bun 1.4 rift-diff | Bun 1.4 standing               |
+| Scenario                      | Node.js 26 rift-diff | Node.js standing               | Bun 1.4 rift-diff | Bun standing                   |
 | ----------------------------- | -------------------: | ------------------------------ | ----------------: | ------------------------------ |
-| Array of code lines           |               291.6k | within 8% of `fast-myers-diff` |            326.9k | leads 1.31×                    |
-| Array of number tokens        |                13.4k | 2.45× behind `fast-myers-diff` |             27.5k | 1.24× behind `fast-myers-diff` |
-| Typed array with sparse edits |                29.6k | within 9% of `fast-myers-diff` |            103.0k | leads 3.26×                    |
+| Equal short text              |               95.86M | 1.48× behind `fast-diff`       |           114.10M | leads 1.04×                    |
+| Single append                 |               19.85M | leads 2.02×                    |            17.71M | leads 1.95×                    |
+| Middle replacement            |                2.36M | leads 1.24×                    |             2.25M | leads 1.57×                    |
+| Large text, small insert      |                1.50M | leads 1.15×                    |             1.42M | leads 1.56×                    |
+| Dispersed replacements        |               107.0k | leads 4.85×                    |             41.0k | leads 1.52×                    |
+| Length-imbalanced containment |               11.27M | leads 1.41×                    |             6.95M | leads 1.44×                    |
+| Repetitive shifted text       |               473.9k | leads 2.27×                    |            178.8k | 1.53× behind `fast-myers-diff` |
+| Fully different text          |                 2.7k | leads 1.18×                    |              3.3k | leads 1.68×                    |
+| Real code file edit           |                 2.4k | 1.32× behind `fast-diff`       |              3.2k | leads 1.70×                    |
+| Real json config edit         |                28.8k | leads 1.19×                    |             21.6k | 1.27× behind `fast-myers-diff` |
+| Real log stream update        |                1.76M | leads 1.49×                    |             1.70M | leads 1.72×                    |
+| Real prose revision           |                15.0k | leads 1.12×                    |             13.1k | leads 1.25×                    |
+| Array of code lines           |               436.3k | within 8% of `fast-myers-diff` |            473.6k | leads 1.27×                    |
+| Array of number tokens        |                21.0k | 2.31× behind `fast-myers-diff` |             40.9k | 1.28× behind `fast-myers-diff` |
+| Typed array with sparse edits |                48.3k | within 6% of `fast-myers-diff` |            153.3k | leads 3.30×                    |
 
-Milestone target: fastest or within 10% of the leader in every scenario. Remaining throughput
-gaps: equal short text and real code file edit on Node.js; repetitive shifted text and real json
-config edit on Bun; array of number tokens on both runtimes.
-
-Context for the number-token gap: incumbents compare elements with `===`, which treats
-equal-position `NaN`s as edits; `rift-diff` defaults to `Object.is`, which V8 executes at about
-1.8× the cost of `===` while JavaScriptCore executes both identically — measured in
-[exploratory/](exploratory/README.md) and recorded as a contract decision in RFC 0001. That
-single difference accounts for the same engine running 2× faster on Bun than Node.js in this
-cell. Callers can pass `equals: (left, right) => left === right` to trade `NaN` correctness for
-V8 throughput.
+Milestone target: fastest or within 10% of the leader in every scenario. Open Node.js cells:
+equal short text (1.48×, real kernel gap now that outputs are anchored), real code file edit
+(1.32×, half-match contract tradeoff), and array of number tokens (2.31×, `Object.is` contract
+tradeoff). Bun trails in repetitive shifted text, real json, and number tokens.
 
 Context for the real code gap: `fast-diff`'s lead there comes from diff-match-patch's half-match
 heuristic (verified: eight native `indexOf` searches fire during that diff), which is documented
@@ -53,71 +43,25 @@ as potentially non-optimal and happens to produce the minimal distance on this f
 `rift-diff` guarantees minimality on every input, so closing that cell would require an explicit
 non-minimal mode (see `docs/state-of-the-art.md`).
 
-The low-level range API is kept out of these tables because it returns indexes into the original
-inputs instead of materialized text. Its raw results remain available in the JSON reports.
+Context for the number-token gap: incumbents compare elements with `===`, which treats
+equal-position `NaN`s as edits; `rift-diff` defaults to `Object.is`, recorded as a contract
+decision in RFC 0001 with an explicit escape hatch.
 
-Values are median operations per second. Higher is better. Statistical variation is reported
-separately instead of appearing as an ambiguous percentage beside throughput.
-
-## Ubuntu x86-64 informative baseline: `ebd109f71b7b`
+## Anchored baseline: `a697662296d5` / `36327602feed`
 
 - Date: 2026-08-04
-- Machine: GitHub-hosted `ubuntu-latest` runner, AMD EPYC 7763, 4 logical CPUs (shared VM)
-- Runtimes: Bun 1.3.14 and Node.js 26.6.0
+- Machine: Apple M4 Max, 14 logical CPUs, 36 GiB RAM, macOS 26.5, arm64
+- Runtimes: Node.js 26.0.0 and Bun 1.4.0
 - Throughput profile: standard, three isolated processes per cell
-- Workflow: `.github/workflows/bench.yml` (`workflow_dispatch`), raw JSONs downloaded from the
-  run artifacts
+- One unstable cell per runtime, both competitor cells (`jsdiff` large insert 7.6% on Node.js,
+  `fast-myers-diff` single append 5.7% on Bun)
 
-These numbers are informative, not comparable to the Apple M4 Max tables: the runner is a shared
-4-vCPU VM and its runtime versions differ (Node.js 26.6.0, Bun 1.3.14). They exist to verify that
-the competitive picture holds on x86-64 Linux, which it does: the multiprocess estimator produced
-zero cells at or above 5% RSD on Node.js and one on Bun (`rift-diff` real prose, 6.4%).
-
-Standing per scenario (median ops/s against the best other measured implementation in the same
-run):
-
-| Scenario                      | Node.js 26.6 rift-diff | Node.js standing | Bun 1.3.14 rift-diff | Bun standing |
-| ----------------------------- | ---------------------: | ---------------- | -------------------: | ------------ |
-| Equal short text              |                 58.07M | 13.84× behind    |               66.46M | 1.45× behind |
-| Single append                 |                  8.61M | leads 2.37×      |                7.44M | leads 2.00×  |
-| Middle replacement            |                  1.09M | leads 1.43×      |               848.3k | leads 1.53×  |
-| Large text, small insert      |                  1.09M | leads 1.46×      |               463.8k | leads 1.20×  |
-| Dispersed replacements        |                  44.2k | leads 4.28×      |                15.9k | leads 1.42×  |
-| Length-imbalanced containment |                  5.81M | leads 1.56×      |                4.34M | leads 1.58×  |
-| Repetitive shifted text       |                 178.8k | leads 1.88×      |                69.5k | 1.57× behind |
-| Fully different text          |                   1.2k | leads 1.21×      |                 1.3k | leads 2.01×  |
-| Real code file edit           |                   1.1k | 1.42× behind     |                 1.2k | leads 1.65×  |
-| Real json config edit         |                  11.9k | leads 1.13×      |                 8.3k | 1.24× behind |
-| Real log stream update        |                 912.5k | leads 1.70×      |               668.5k | leads 1.86×  |
-| Real prose revision           |                   6.3k | leads 1.05×      |                 4.8k | leads 1.21×  |
-| Array of code lines           |                 154.7k | 1.16× behind     |               145.1k | leads 1.15×  |
-| Array of number tokens        |                  10.1k | 2.07× behind     |                17.7k | 1.24× behind |
-| Typed array with sparse edits |                  28.7k | leads 1.16×      |                59.5k | leads 2.61×  |
-
-Reading by platform:
-
-- The contract gaps reproduce on x86-64: real code (diff-match-patch half-match) and number
-  tokens (`Object.is` on V8) behave exactly as recorded on macOS ARM64, confirming they are
-  structural rather than machine-specific.
-- Node.js equal short text is the one large platform anomaly: `fast-diff` measured 803.62M ops/s
-  (about 1.2 ns per call) on V8 x86-64 — consistent with escape analysis eliminating its result
-  allocation entirely — versus 107M on the same code on ARM64. `rift-diff` at 58M ops/s remains
-  far above any practical requirement in that cell.
-- Repetitive shifted text on Bun trails 1.57× (1.53× on ARM64) and Bun real json trails 1.24×,
-  now from a stable cell, confirming the ARM64 reading that had been marked unresolved.
-- Node.js scaled memory stress is valid and matches the ARM64 shape: the adaptive engine used
-  3.32 MiB incremental at 300 units versus 9.88 MiB for the same-bundle trace reference, and
-  8.57 MiB versus 39.09 MiB at 1,000 units.
-- Bun 1.3.14 on Linux reports a constant, implausible `process.resourceUsage().maxRSS` (157 KiB
-  for the empty worker and every cell alike), so every Bun memory number from this platform is
-  invalid and excluded from interpretation. Throughput numbers are unaffected. This needs
-  revisiting when the pinned Bun version moves.
-
-Raw data:
-[ubuntu-informative-x86_64-node.json](ubuntu-informative-x86_64-node.json),
-[ubuntu-informative-x86_64-bun.json](ubuntu-informative-x86_64-bun.json),
-[ubuntu-informative-memory-stress-x86_64-node.json](ubuntu-informative-memory-stress-x86_64-node.json),
-[ubuntu-informative-memory-stress-x86_64-bun.json](ubuntu-informative-memory-stress-x86_64-bun.json)
+First full matrix after content anchoring and the optional-options change. It has no `Rift
+before` column on purpose: pre-anchoring numbers are not comparable, so this run is the canonical
+reference all subsequent iterations compare against. The distance table above is regenerated from
+it. Raw data:
+[anchored-baseline-macos-arm64-node.json](anchored-baseline-macos-arm64-node.json),
+[anchored-baseline-macos-arm64-bun.json](anchored-baseline-macos-arm64-bun.json)
 
 ## Rectification: text rows measured at `96f2e3dffb9f` are not valid baselines
 
