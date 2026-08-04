@@ -45,7 +45,7 @@ export function diffRanges<Element>(
 
   // Identical references are only a proven equality when elements compare with the default
   // reflexive equality; a caller-provided function may deliberately reject identical elements.
-  if (options.equals === undefined && before === after) {
+  if (before === after && options.equals === undefined) {
     return before.length === 0 ? [] : [createRange(EQUAL, 0, before.length, 0, after.length)]
   }
 

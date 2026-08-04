@@ -7,7 +7,7 @@ export function diff<Element, Slice>(
   after: Sliceable<Element, Slice>,
   options: DiffOptions<Element> = {},
 ): DiffChunk<Slice>[] {
-  if (options.equals === undefined && before === after) {
+  if (before === after && options.equals === undefined) {
     validateMaxEditDistance(options.maxEditDistance)
     return before.length === 0 ? [] : [{ operation: EQUAL, value: before.slice(0, before.length) }]
   }
