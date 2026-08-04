@@ -1,85 +1,575 @@
+import { execFileSync, spawnSync } from 'node:child_process'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+import { arch, cpus, platform, release, totalmem } from 'node:os'
 import { diffChars } from 'diff'
 import fastDiff from 'fast-diff'
 import { calcSlices } from 'fast-myers-diff'
-import { diffRanges } from '../src/index.ts'
+import { diff as riftDiff, diffRanges } from '../src/index.ts'
+import { DELETE, INSERT } from '../src/types.ts'
+import type { DiffOperation } from '../src/types.ts'
 
 interface Scenario {
+  readonly id: string
   readonly name: string
   readonly before: string
   readonly after: string
-  readonly iterations: number
+}
+
+interface InspectedChunk {
+  readonly operation: DiffOperation
+  readonly value: string
+}
+
+interface MeasuredOutput {
+  readonly length: number
 }
 
 interface Benchmark {
+  readonly id: string
   readonly name: string
-  readonly run: (before: string, after: string) => void
+  readonly lane: 'ranges' | 'materialized'
+  readonly run: (before: string, after: string) => MeasuredOutput
+  readonly inspect: (before: string, after: string) => readonly InspectedChunk[]
+}
+
+interface Profile {
+  readonly name: string
+  readonly calibrationMilliseconds: number
+  readonly warmupMilliseconds: number
+  readonly sampleMilliseconds: number
+  readonly sampleCount: number
+}
+
+interface WorkerResult {
+  readonly benchmarkId: string
+  readonly scenarioId: string
+  readonly iterationsPerSample: number
+  readonly samplesNanosecondsPerOperation: readonly number[]
+  readonly checksum: number
+}
+
+interface BenchmarkResult extends WorkerResult {
+  readonly medianNanosecondsPerOperation: number
+  readonly p95NanosecondsPerOperation: number
+  readonly medianOperationsPerSecond: number
+  readonly relativeStandardDeviation: number
+  readonly editDistance: number
+}
+
+interface BenchmarkReport {
+  readonly schemaVersion: 1
+  readonly label: string
+  readonly generatedAt: string
+  readonly commit: string
+  readonly dirty: boolean
+  readonly runtime: {
+    readonly name: string
+    readonly version: string
+  }
+  readonly system: {
+    readonly platform: string
+    readonly release: string
+    readonly architecture: string
+    readonly cpu: string
+    readonly logicalCpuCount: number
+    readonly totalMemoryBytes: number
+  }
+  readonly profile: Profile
+  readonly scenarios: readonly {
+    readonly id: string
+    readonly name: string
+    readonly beforeLength: number
+    readonly afterLength: number
+  }[]
+  readonly benchmarks: readonly {
+    readonly id: string
+    readonly name: string
+    readonly lane: Benchmark['lane']
+  }[]
+  readonly results: readonly BenchmarkResult[]
 }
 
 const paragraph = 'The quick brown fox jumps over the lazy dog. '
+const mediumText = paragraph.repeat(20)
+const largeText = paragraph.repeat(250)
+const containmentCore = 'central payload '.repeat(6)
+
 const scenarios: readonly Scenario[] = [
   {
-    name: 'single keystroke',
+    id: 'equal-short',
+    name: 'equal short text',
+    before: paragraph,
+    after: paragraph,
+  },
+  {
+    id: 'append-character',
+    name: 'single append',
     before: paragraph.repeat(2),
     after: `${paragraph.repeat(2)}!`,
-    iterations: 20_000,
   },
   {
-    name: 'large text, small edit',
-    before: paragraph.repeat(250),
+    id: 'middle-replacement',
+    name: 'middle replacement',
+    before: mediumText,
+    after: replaceAt(mediumText, Math.floor(mediumText.length / 2), '#'),
+  },
+  {
+    id: 'large-middle-insert',
+    name: 'large text, small insert',
+    before: largeText,
     after: `${paragraph.repeat(125)}changed ${paragraph.repeat(125)}`,
-    iterations: 1_000,
   },
   {
-    name: 'fully different',
-    before: 'a'.repeat(500),
-    after: 'b'.repeat(500),
-    iterations: 50,
+    id: 'dispersed-edits',
+    name: 'dispersed replacements',
+    before: paragraph.repeat(100),
+    after: replaceEvery(paragraph.repeat(100), 500),
+  },
+  {
+    id: 'contained-delete',
+    name: 'length-imbalanced containment',
+    before: `${'A'.repeat(200)}${containmentCore}${'B'.repeat(200)}`,
+    after: containmentCore,
+  },
+  {
+    id: 'repetitive-shift',
+    name: 'repetitive shifted text',
+    before: `${'ab'.repeat(500)}x`,
+    after: `x${'ab'.repeat(500)}`,
+  },
+  {
+    id: 'fully-different',
+    name: 'fully different text',
+    before: 'a'.repeat(300),
+    after: 'b'.repeat(300),
   },
 ]
 
 const benchmarks: readonly Benchmark[] = [
   {
-    name: 'rift-diff',
-    run: (before, after) => {
-      diffRanges(before, after)
-    },
+    id: 'rift-ranges',
+    name: 'rift ranges',
+    lane: 'ranges',
+    run: (before, after) => diffRanges(before, after),
+    inspect: (before, after) =>
+      diffRanges(before, after).map((range) => ({
+        operation: range.operation,
+        value:
+          range.operation === INSERT
+            ? after.slice(range.afterStart, range.afterEnd)
+            : before.slice(range.beforeStart, range.beforeEnd),
+      })),
   },
   {
+    id: 'rift-materialized',
+    name: 'rift materialized',
+    lane: 'materialized',
+    run: (before, after) => riftDiff(before, after),
+    inspect: (before, after) => riftDiff(before, after),
+  },
+  {
+    id: 'fast-diff',
     name: 'fast-diff',
-    run: (before, after) => {
-      fastDiff(before, after)
-    },
+    lane: 'materialized',
+    run: (before, after) => fastDiff(before, after),
+    inspect: (before, after) =>
+      fastDiff(before, after).map(([operation, value]) => ({ operation, value })),
   },
   {
+    id: 'fast-myers-diff',
     name: 'fast-myers-diff',
-    run: (before, after) => {
-      Array.from(calcSlices(before, after))
-    },
+    lane: 'materialized',
+    run: (before, after) => Array.from(calcSlices(before, after)),
+    inspect: (before, after) =>
+      Array.from(calcSlices(before, after), ([operation, value]) => ({ operation, value })),
   },
   {
-    name: 'diff',
-    run: (before, after) => {
-      diffChars(before, after)
-    },
+    id: 'jsdiff',
+    name: 'jsdiff',
+    lane: 'materialized',
+    run: (before, after) => diffChars(before, after),
+    inspect: (before, after) =>
+      diffChars(before, after).map((change) => ({
+        operation: change.added ? INSERT : change.removed ? DELETE : 0,
+        value: change.value,
+      })),
   },
 ]
 
-for (const scenario of scenarios) {
-  console.log(`\n${scenario.name}`)
+const profiles: Readonly<Record<string, Profile>> = {
+  quick: {
+    name: 'quick',
+    calibrationMilliseconds: 5,
+    warmupMilliseconds: 30,
+    sampleMilliseconds: 15,
+    sampleCount: 3,
+  },
+  standard: {
+    name: 'standard',
+    calibrationMilliseconds: 15,
+    warmupMilliseconds: 150,
+    sampleMilliseconds: 50,
+    sampleCount: 7,
+  },
+  full: {
+    name: 'full',
+    calibrationMilliseconds: 30,
+    warmupMilliseconds: 500,
+    sampleMilliseconds: 200,
+    sampleCount: 15,
+  },
+}
 
-  for (const benchmark of benchmarks) {
-    for (let index = 0; index < 100; index += 1) {
-      benchmark.run(scenario.before, scenario.after)
-    }
+const profileName = readArgument('--profile') ?? 'standard'
+const profile = profiles[profileName]
 
-    const startedAt = performance.now()
+if (!profile) {
+  throw new Error(`Unknown benchmark profile: ${profileName}`)
+}
 
-    for (let index = 0; index < scenario.iterations; index += 1) {
-      benchmark.run(scenario.before, scenario.after)
-    }
+const workerBenchmarkId = readArgument('--worker-benchmark')
+const workerScenarioId = readArgument('--worker-scenario')
 
-    const duration = performance.now() - startedAt
-    const operationsPerSecond = Math.round((scenario.iterations / duration) * 1_000)
-    console.log(`${benchmark.name.padEnd(18)} ${operationsPerSecond.toLocaleString()} ops/s`)
+if (workerBenchmarkId || workerScenarioId) {
+  if (!workerBenchmarkId || !workerScenarioId) {
+    throw new Error('Worker benchmark and scenario must be provided together')
   }
+
+  const benchmark = findBenchmark(workerBenchmarkId)
+  const scenario = findScenario(workerScenarioId)
+  process.stdout.write(`${JSON.stringify(measureWorker(benchmark, scenario, profile))}\n`)
+} else {
+  runController(profile)
+}
+
+function runController(selectedProfile: Profile): void {
+  const inspectedDistances = verifyImplementations()
+  const combinations = shuffle(
+    scenarios.flatMap((scenario) => benchmarks.map((benchmark) => ({ benchmark, scenario }))),
+    0x5eed,
+  )
+  const results: BenchmarkResult[] = []
+
+  for (const { benchmark, scenario } of combinations) {
+    const execution = spawnSync(
+      process.execPath,
+      [
+        process.argv[1]!,
+        '--profile',
+        selectedProfile.name,
+        '--worker-benchmark',
+        benchmark.id,
+        '--worker-scenario',
+        scenario.id,
+      ],
+      { encoding: 'utf8', maxBuffer: 1024 * 1024 },
+    )
+
+    if (execution.status !== 0) {
+      throw new Error(
+        `Benchmark worker failed for ${benchmark.id}/${scenario.id}: ${execution.stderr}`,
+      )
+    }
+
+    const workerResult: WorkerResult = JSON.parse(execution.stdout)
+    const samples = workerResult.samplesNanosecondsPerOperation.toSorted(
+      (left, right) => left - right,
+    )
+    const medianNanosecondsPerOperation = percentile(samples, 0.5)
+
+    results.push({
+      ...workerResult,
+      medianNanosecondsPerOperation,
+      p95NanosecondsPerOperation: percentile(samples, 0.95),
+      medianOperationsPerSecond: 1_000_000_000 / medianNanosecondsPerOperation,
+      relativeStandardDeviation: relativeStandardDeviation(samples),
+      editDistance: inspectedDistances.get(`${benchmark.id}:${scenario.id}`)!,
+    })
+  }
+
+  const runtime = process.versions.bun
+    ? { name: 'Bun', version: process.versions.bun }
+    : { name: 'Node.js', version: process.versions.node }
+  const processors = cpus()
+  const firstProcessor = processors[0]
+
+  if (!firstProcessor) {
+    throw new Error('Unable to read CPU metadata')
+  }
+
+  const report: BenchmarkReport = {
+    schemaVersion: 1,
+    label: readArgument('--label') ?? 'unlabelled',
+    generatedAt: new Date().toISOString(),
+    commit: readGitCommit(),
+    dirty: readGitDirtyState(),
+    runtime,
+    system: {
+      platform: platform(),
+      release: release(),
+      architecture: arch(),
+      cpu: firstProcessor.model,
+      logicalCpuCount: processors.length,
+      totalMemoryBytes: totalmem(),
+    },
+    profile: selectedProfile,
+    scenarios: scenarios.map((scenario) => ({
+      id: scenario.id,
+      name: scenario.name,
+      beforeLength: scenario.before.length,
+      afterLength: scenario.after.length,
+    })),
+    benchmarks: benchmarks.map((benchmark) => ({
+      id: benchmark.id,
+      name: benchmark.name,
+      lane: benchmark.lane,
+    })),
+    results,
+  }
+
+  printReport(report)
+
+  const outputPath = readArgument('--output')
+  if (outputPath) {
+    mkdirSync(dirname(outputPath), { recursive: true })
+    writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`)
+    console.log(`\nRaw report: ${outputPath}`)
+  }
+}
+
+function measureWorker(
+  benchmark: Benchmark,
+  scenario: Scenario,
+  selectedProfile: Profile,
+): WorkerResult {
+  const iterationsPerSample = calibrateIterations(benchmark, scenario, selectedProfile)
+  const warmupStartedAt = performance.now()
+  let checksum = 0
+
+  while (performance.now() - warmupStartedAt < selectedProfile.warmupMilliseconds) {
+    checksum = runBatch(benchmark, scenario, iterationsPerSample, checksum).checksum
+  }
+
+  const samplesNanosecondsPerOperation: number[] = []
+
+  for (let sample = 0; sample < selectedProfile.sampleCount; sample += 1) {
+    const measurement = runBatch(benchmark, scenario, iterationsPerSample, checksum)
+    checksum = measurement.checksum
+    samplesNanosecondsPerOperation.push(
+      (measurement.durationMilliseconds * 1_000_000) / iterationsPerSample,
+    )
+  }
+
+  return {
+    benchmarkId: benchmark.id,
+    scenarioId: scenario.id,
+    iterationsPerSample,
+    samplesNanosecondsPerOperation,
+    checksum,
+  }
+}
+
+function calibrateIterations(
+  benchmark: Benchmark,
+  scenario: Scenario,
+  selectedProfile: Profile,
+): number {
+  let iterations = 1
+  let checksum = 0
+
+  while (iterations < 10_000_000) {
+    const measurement = runBatch(benchmark, scenario, iterations, checksum)
+    checksum = measurement.checksum
+
+    if (measurement.durationMilliseconds >= selectedProfile.calibrationMilliseconds) {
+      const projectedIterations = Math.floor(
+        (iterations * selectedProfile.sampleMilliseconds) / measurement.durationMilliseconds,
+      )
+      return Math.max(1, Math.min(projectedIterations, 10_000_000))
+    }
+
+    iterations *= 2
+  }
+
+  return iterations
+}
+
+function runBatch(
+  benchmark: Benchmark,
+  scenario: Scenario,
+  iterations: number,
+  initialChecksum: number,
+): { readonly durationMilliseconds: number; readonly checksum: number } {
+  let checksum = initialChecksum
+  const startedAt = performance.now()
+
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    const output = benchmark.run(scenario.before, scenario.after)
+    checksum = Math.imul(checksum ^ output.length, 16_777_619) >>> 0
+  }
+
+  return {
+    durationMilliseconds: performance.now() - startedAt,
+    checksum,
+  }
+}
+
+function verifyImplementations(): ReadonlyMap<string, number> {
+  const distances = new Map<string, number>()
+
+  for (const scenario of scenarios) {
+    for (const benchmark of benchmarks) {
+      const chunks = benchmark.inspect(scenario.before, scenario.after)
+      const reconstructed = chunks
+        .filter((chunk) => chunk.operation !== DELETE)
+        .map((chunk) => chunk.value)
+        .join('')
+
+      if (reconstructed !== scenario.after) {
+        throw new Error(`${benchmark.name} failed to reconstruct ${scenario.name}`)
+      }
+
+      const distance = chunks.reduce(
+        (total, chunk) =>
+          chunk.operation === DELETE || chunk.operation === INSERT
+            ? total + chunk.value.length
+            : total,
+        0,
+      )
+      distances.set(`${benchmark.id}:${scenario.id}`, distance)
+    }
+  }
+
+  return distances
+}
+
+function printReport(report: BenchmarkReport): void {
+  console.log(`# ${report.label}: ${report.runtime.name} ${report.runtime.version}`)
+  console.log(
+    `${report.system.platform} ${report.system.architecture} · ${report.system.cpu} · commit ${report.commit}${report.dirty ? ' (dirty)' : ''}`,
+  )
+  console.log(
+    `${report.profile.sampleCount} isolated samples · ${report.profile.sampleMilliseconds} ms target/sample · median ops/s (RSD)`,
+  )
+  console.log('')
+  console.log(`| Scenario | ${report.benchmarks.map((benchmark) => benchmark.name).join(' | ')} |`)
+  console.log(`| --- | ${report.benchmarks.map(() => '---:').join(' | ')} |`)
+
+  for (const scenario of report.scenarios) {
+    const cells = report.benchmarks.map((benchmark) => {
+      const result = findResult(report.results, benchmark.id, scenario.id)
+      return `${formatOperations(result.medianOperationsPerSecond)} (${formatPercent(result.relativeStandardDeviation)})`
+    })
+    console.log(`| ${scenario.name} | ${cells.join(' | ')} |`)
+  }
+}
+
+function findResult(
+  results: readonly BenchmarkResult[],
+  benchmarkId: string,
+  scenarioId: string,
+): BenchmarkResult {
+  const result = results.find(
+    (candidate) => candidate.benchmarkId === benchmarkId && candidate.scenarioId === scenarioId,
+  )
+
+  if (!result) {
+    throw new Error(`Missing result for ${benchmarkId}/${scenarioId}`)
+  }
+
+  return result
+}
+
+function findBenchmark(id: string): Benchmark {
+  const benchmark = benchmarks.find((candidate) => candidate.id === id)
+
+  if (!benchmark) {
+    throw new Error(`Unknown benchmark: ${id}`)
+  }
+
+  return benchmark
+}
+
+function findScenario(id: string): Scenario {
+  const scenario = scenarios.find((candidate) => candidate.id === id)
+
+  if (!scenario) {
+    throw new Error(`Unknown scenario: ${id}`)
+  }
+
+  return scenario
+}
+
+function readArgument(name: string): string | undefined {
+  const index = process.argv.indexOf(name)
+  return index === -1 ? undefined : process.argv[index + 1]
+}
+
+function readGitCommit(): string {
+  return execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], { encoding: 'utf8' }).trim()
+}
+
+function readGitDirtyState(): boolean {
+  return execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim().length > 0
+}
+
+function percentile(sortedValues: readonly number[], probability: number): number {
+  if (sortedValues.length === 0) {
+    throw new Error('Cannot calculate a percentile without samples')
+  }
+
+  const index = Math.min(sortedValues.length - 1, Math.ceil(sortedValues.length * probability) - 1)
+  return sortedValues[index]!
+}
+
+function relativeStandardDeviation(values: readonly number[]): number {
+  const mean = values.reduce((total, value) => total + value, 0) / values.length
+  const variance = values.reduce((total, value) => total + (value - mean) ** 2, 0) / values.length
+  return Math.sqrt(variance) / mean
+}
+
+function shuffle<Value>(values: readonly Value[], seed: number): Value[] {
+  const shuffled = [...values]
+  let state = seed >>> 0
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0
+    const target = state % (index + 1)
+    const value = shuffled[index]!
+    shuffled[index] = shuffled[target]!
+    shuffled[target] = value
+  }
+
+  return shuffled
+}
+
+function replaceAt(value: string, index: number, replacement: string): string {
+  return `${value.slice(0, index)}${replacement}${value.slice(index + 1)}`
+}
+
+function replaceEvery(value: string, interval: number): string {
+  const characters = value.split('')
+
+  for (let index = interval - 1; index < characters.length; index += interval) {
+    characters[index] = characters[index] === '#' ? '@' : '#'
+  }
+
+  return characters.join('')
+}
+
+function formatOperations(operationsPerSecond: number): string {
+  if (operationsPerSecond >= 1_000_000) {
+    return `${(operationsPerSecond / 1_000_000).toFixed(2)}M`
+  }
+
+  if (operationsPerSecond >= 1_000) {
+    return `${(operationsPerSecond / 1_000).toFixed(1)}k`
+  }
+
+  return operationsPerSecond.toFixed(0)
+}
+
+function formatPercent(ratio: number): string {
+  return `${(ratio * 100).toFixed(1)}%`
 }

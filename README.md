@@ -37,6 +37,10 @@ release.
 The rationale for keeping the default engine in TypeScript, along with the evidence required for a
 future native backend, is recorded in [ADR 0002](docs/adr-0002-typescript-first.md).
 
+The current algorithm survey is maintained in [State of the art](docs/state-of-the-art.md). Every
+optimization follows the reproducible comparison protocol in
+[Benchmark methodology](docs/benchmarking.md).
+
 ## Principles
 
 - Zero runtime dependencies
