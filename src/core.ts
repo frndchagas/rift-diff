@@ -30,6 +30,8 @@ interface MyersSplit {
 
 type LinearWorkItem = DiffWorkItem | RangeWorkItem
 
+type IndexEquality = (beforeIndex: number, afterIndex: number) => boolean
+
 const TRACE_DISTANCE_LIMIT = 32
 const TRACE_WORKSPACE_LIMIT_BYTES = 1.5 * 1024 * 1024
 const TRACE_SUBPROBLEM_SIZE = 32
@@ -56,17 +58,30 @@ export function diffRanges<Element>(
     ranges.push(createRange(EQUAL, 0, prefixLength, 0, prefixLength))
   }
 
-  appendMiddleRanges(
-    ranges,
-    before,
-    after,
-    prefixLength,
-    beforeMiddleEnd,
-    prefixLength,
-    afterMiddleEnd,
-    equals,
-    options.maxEditDistance,
-  )
+  if (
+    !appendTrivialMiddleRanges(
+      ranges,
+      prefixLength,
+      beforeMiddleEnd,
+      prefixLength,
+      afterMiddleEnd,
+      options.maxEditDistance,
+    )
+  ) {
+    const equalsAt: IndexEquality = (beforeIndex, afterIndex) =>
+      equals(before[beforeIndex]!, after[afterIndex]!)
+
+    ranges.push(
+      ...calculateMyersRanges(
+        prefixLength,
+        beforeMiddleEnd,
+        prefixLength,
+        afterMiddleEnd,
+        equalsAt,
+        options.maxEditDistance,
+      ),
+    )
+  }
 
   if (suffixLength > 0) {
     ranges.push(createRange(EQUAL, beforeMiddleEnd, before.length, afterMiddleEnd, after.length))
@@ -75,45 +90,31 @@ export function diffRanges<Element>(
   return ranges
 }
 
-function appendMiddleRanges<Element>(
+function appendTrivialMiddleRanges(
   ranges: MutableDiffRange[],
-  before: Indexable<Element>,
-  after: Indexable<Element>,
   beforeStart: number,
   beforeEnd: number,
   afterStart: number,
   afterEnd: number,
-  equals: (before: Element, after: Element) => boolean,
   maxEditDistance: number | undefined,
-): void {
+): boolean {
   if (beforeStart === beforeEnd && afterStart === afterEnd) {
-    return
+    return true
   }
 
   if (beforeStart === beforeEnd) {
     assertDistanceWithinLimit(afterEnd - afterStart, maxEditDistance)
     ranges.push(createRange(INSERT, beforeStart, beforeStart, afterStart, afterEnd))
-    return
+    return true
   }
 
   if (afterStart === afterEnd) {
     assertDistanceWithinLimit(beforeEnd - beforeStart, maxEditDistance)
     ranges.push(createRange(DELETE, beforeStart, beforeEnd, afterStart, afterStart))
-    return
+    return true
   }
 
-  ranges.push(
-    ...calculateMyersRanges(
-      before,
-      after,
-      beforeStart,
-      beforeEnd,
-      afterStart,
-      afterEnd,
-      equals,
-      maxEditDistance,
-    ),
-  )
+  return false
 }
 
 function diffStringRanges(
@@ -158,17 +159,30 @@ function diffStringRanges(
         createRange(DELETE, prefixLength, beforeMiddleEnd, prefixLength, prefixLength),
         createRange(INSERT, beforeMiddleEnd, beforeMiddleEnd, prefixLength, afterMiddleEnd),
       )
-    } else {
-      appendMiddleRanges(
+    } else if (
+      !appendTrivialMiddleRanges(
         ranges,
-        before,
-        after,
         prefixLength,
         beforeMiddleEnd,
         prefixLength,
         afterMiddleEnd,
-        strictEqual,
         maxEditDistance,
+      )
+    ) {
+      // Comparing UTF-16 code units through a monomorphic closure avoids materializing
+      // single-character strings inside every snake scan.
+      const equalsAt: IndexEquality = (beforeIndex, afterIndex) =>
+        before.charCodeAt(beforeIndex) === after.charCodeAt(afterIndex)
+
+      ranges.push(
+        ...calculateMyersRanges(
+          prefixLength,
+          beforeMiddleEnd,
+          prefixLength,
+          afterMiddleEnd,
+          equalsAt,
+          maxEditDistance,
+        ),
       )
     }
   }
@@ -239,25 +253,21 @@ function appendStringContainmentRanges(
   return true
 }
 
-function calculateMyersRanges<Element>(
-  before: Indexable<Element>,
-  after: Indexable<Element>,
+function calculateMyersRanges(
   beforeStart: number,
   beforeEnd: number,
   afterStart: number,
   afterEnd: number,
-  equals: (before: Element, after: Element) => boolean,
+  equalsAt: IndexEquality,
   maxEditDistance: number | undefined,
 ): MutableDiffRange[] {
   if (maxEditDistance !== undefined) {
     const ranges = calculateTraceMyersRanges(
-      before,
-      after,
       beforeStart,
       beforeEnd,
       afterStart,
       afterEnd,
-      equals,
+      equalsAt,
       maxEditDistance,
       Number.POSITIVE_INFINITY,
       Number.POSITIVE_INFINITY,
@@ -271,13 +281,11 @@ function calculateMyersRanges<Element>(
   }
 
   const tracedRanges = calculateTraceMyersRanges(
-    before,
-    after,
     beforeStart,
     beforeEnd,
     afterStart,
     afterEnd,
-    equals,
+    equalsAt,
     undefined,
     TRACE_DISTANCE_LIMIT,
     TRACE_WORKSPACE_LIMIT_BYTES,
@@ -285,26 +293,16 @@ function calculateMyersRanges<Element>(
 
   return (
     tracedRanges ??
-    calculateLinearSpaceMyersRanges(
-      before,
-      after,
-      beforeStart,
-      beforeEnd,
-      afterStart,
-      afterEnd,
-      equals,
-    )
+    calculateLinearSpaceMyersRanges(beforeStart, beforeEnd, afterStart, afterEnd, equalsAt)
   )
 }
 
-function calculateTraceMyersRanges<Element>(
-  before: Indexable<Element>,
-  after: Indexable<Element>,
+function calculateTraceMyersRanges(
   beforeStart: number,
   beforeEnd: number,
   afterStart: number,
   afterEnd: number,
-  equals: (before: Element, after: Element) => boolean,
+  equalsAt: IndexEquality,
   maxEditDistance: number | undefined,
   traceDistanceLimit: number,
   traceWorkspaceLimitBytes: number,
@@ -352,7 +350,7 @@ function calculateTraceMyersRanges<Element>(
       while (
         beforeIndex < beforeLength &&
         afterIndex < afterLength &&
-        equals(before[beforeStart + beforeIndex]!, after[afterStart + afterIndex]!)
+        equalsAt(beforeStart + beforeIndex, afterStart + afterIndex)
       ) {
         beforeIndex += 1
         afterIndex += 1
@@ -377,14 +375,12 @@ function calculateTraceMyersRanges<Element>(
   throw new DiffLimitError(distanceLimit)
 }
 
-function calculateLinearSpaceMyersRanges<Element>(
-  before: Indexable<Element>,
-  after: Indexable<Element>,
+function calculateLinearSpaceMyersRanges(
   beforeStart: number,
   beforeEnd: number,
   afterStart: number,
   afterEnd: number,
-  equals: (before: Element, after: Element) => boolean,
+  equalsAt: IndexEquality,
 ): MutableDiffRange[] {
   const ranges: MutableDiffRange[] = []
   const work: LinearWorkItem[] = [{ kind: 'diff', beforeStart, beforeEnd, afterStart, afterEnd }]
@@ -412,7 +408,7 @@ function calculateLinearSpaceMyersRanges<Element>(
     while (
       middleBeforeStart < middleBeforeEnd &&
       middleAfterStart < middleAfterEnd &&
-      equals(before[middleBeforeStart]!, after[middleAfterStart]!)
+      equalsAt(middleBeforeStart, middleAfterStart)
     ) {
       middleBeforeStart += 1
       middleAfterStart += 1
@@ -428,7 +424,7 @@ function calculateLinearSpaceMyersRanges<Element>(
     while (
       middleBeforeStart < middleBeforeEnd &&
       middleAfterStart < middleAfterEnd &&
-      equals(before[middleBeforeEnd - 1]!, after[middleAfterEnd - 1]!)
+      equalsAt(middleBeforeEnd - 1, middleAfterEnd - 1)
     ) {
       middleBeforeEnd -= 1
       middleAfterEnd -= 1
@@ -471,26 +467,22 @@ function calculateLinearSpaceMyersRanges<Element>(
     if (beforeLength === 1 || afterLength === 1) {
       appendSingleElementRanges(
         ranges,
-        before,
-        after,
         middleBeforeStart,
         middleBeforeEnd,
         middleAfterStart,
         middleAfterEnd,
-        equals,
+        equalsAt,
       )
       continue
     }
 
     if (beforeLength + afterLength <= TRACE_SUBPROBLEM_SIZE) {
       const tracedRanges = calculateTraceMyersRanges(
-        before,
-        after,
         middleBeforeStart,
         middleBeforeEnd,
         middleAfterStart,
         middleAfterEnd,
-        equals,
+        equalsAt,
         undefined,
         Number.POSITIVE_INFINITY,
         Number.POSITIVE_INFINITY,
@@ -507,13 +499,11 @@ function calculateLinearSpaceMyersRanges<Element>(
     }
 
     const split = findMyersSplit(
-      before,
-      after,
       middleBeforeStart,
       middleBeforeEnd,
       middleAfterStart,
       middleAfterEnd,
-      equals,
+      equalsAt,
       forwardWorkspace,
       reverseWorkspace,
     )
@@ -556,14 +546,12 @@ function calculateLinearSpaceMyersRanges<Element>(
   return ranges
 }
 
-function findMyersSplit<Element>(
-  before: Indexable<Element>,
-  after: Indexable<Element>,
+function findMyersSplit(
   beforeStart: number,
   beforeEnd: number,
   afterStart: number,
   afterEnd: number,
-  equals: (before: Element, after: Element) => boolean,
+  equalsAt: IndexEquality,
   forward: Int32Array,
   reverse: Int32Array,
 ): MyersSplit | undefined {
@@ -602,7 +590,7 @@ function findMyersSplit<Element>(
       while (
         beforeIndex < beforeLength &&
         afterIndex < afterLength &&
-        equals(before[beforeStart + beforeIndex]!, after[afterStart + afterIndex]!)
+        equalsAt(beforeStart + beforeIndex, afterStart + afterIndex)
       ) {
         beforeIndex += 1
         afterIndex += 1
@@ -649,7 +637,7 @@ function findMyersSplit<Element>(
       while (
         beforeIndex < beforeLength &&
         afterIndex < afterLength &&
-        equals(before[beforeEnd - beforeIndex - 1]!, after[afterEnd - afterIndex - 1]!)
+        equalsAt(beforeEnd - beforeIndex - 1, afterEnd - afterIndex - 1)
       ) {
         beforeIndex += 1
         afterIndex += 1
@@ -684,20 +672,18 @@ function findMyersSplit<Element>(
   return undefined
 }
 
-function appendSingleElementRanges<Element>(
+function appendSingleElementRanges(
   ranges: MutableDiffRange[],
-  before: Indexable<Element>,
-  after: Indexable<Element>,
   beforeStart: number,
   beforeEnd: number,
   afterStart: number,
   afterEnd: number,
-  equals: (before: Element, after: Element) => boolean,
+  equalsAt: IndexEquality,
 ): void {
   if (beforeEnd - beforeStart === 1) {
     let match = afterStart
 
-    while (match < afterEnd && !equals(before[beforeStart]!, after[match]!)) {
+    while (match < afterEnd && !equalsAt(beforeStart, match)) {
       match += 1
     }
 
@@ -722,7 +708,7 @@ function appendSingleElementRanges<Element>(
 
   let match = beforeStart
 
-  while (match < beforeEnd && !equals(before[match]!, after[afterStart]!)) {
+  while (match < beforeEnd && !equalsAt(match, afterStart)) {
     match += 1
   }
 
@@ -974,10 +960,6 @@ function assertDistanceWithinLimit(
   if (maxEditDistance !== undefined && editDistance > maxEditDistance) {
     throw new DiffLimitError(maxEditDistance)
   }
-}
-
-function strictEqual<Element>(before: Element, after: Element): boolean {
-  return before === after
 }
 
 function createRange(
