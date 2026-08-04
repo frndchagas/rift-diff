@@ -559,10 +559,6 @@ function findMyersSplit(
   const vectorLength = 2 * maximumDistance + 3
   const delta = beforeLength - afterLength
   const overlapsOnForwardPass = delta % 2 !== 0
-  let forwardStart = 0
-  let forwardEnd = 0
-  let reverseStart = 0
-  let reverseEnd = 0
 
   forward.fill(-1, 0, vectorLength)
   reverse.fill(-1, 0, vectorLength)
@@ -570,18 +566,17 @@ function findMyersSplit(
   reverse[offset + 1] = 0
 
   for (let distance = 0; distance < maximumDistance; distance += 1) {
-    for (
-      let diagonal = -distance + forwardStart;
-      diagonal <= distance - forwardEnd;
-      diagonal += 2
-    ) {
+    const diagonalMin = 2 * Math.max(0, distance - afterLength) - distance
+    const diagonalMax = distance - 2 * Math.max(0, distance - beforeLength)
+    const overlapLimit = overlapsOnForwardPass ? distance - 1 : distance
+
+    for (let diagonal = diagonalMin; diagonal <= diagonalMax; diagonal += 2) {
       const vectorIndex = offset + diagonal
       let beforeIndex =
         diagonal === -distance ||
-        (diagonal !== distance &&
-          (forward[vectorIndex - 1] ?? -1) < (forward[vectorIndex + 1] ?? -1))
-          ? (forward[vectorIndex + 1] ?? 0)
-          : (forward[vectorIndex - 1] ?? -1) + 1
+        (diagonal !== distance && forward[vectorIndex - 1]! < forward[vectorIndex + 1]!)
+          ? forward[vectorIndex + 1]!
+          : forward[vectorIndex - 1]! + 1
       let afterIndex = beforeIndex - diagonal
 
       while (
@@ -595,19 +590,14 @@ function findMyersSplit(
 
       forward[vectorIndex] = beforeIndex
 
-      if (beforeIndex > beforeLength) {
-        forwardEnd += 2
-      } else if (afterIndex > afterLength) {
-        forwardStart += 2
-      } else if (overlapsOnForwardPass) {
+      if (overlapsOnForwardPass && beforeIndex <= beforeLength && afterIndex <= afterLength) {
         const reverseDiagonal = delta - diagonal
-        const reverseIndex = offset + reverseDiagonal
 
         if (
-          reverseIndex >= 0 &&
-          reverseIndex < vectorLength &&
-          (reverse[reverseIndex] ?? -1) >= 0 &&
-          beforeIndex >= beforeLength - (reverse[reverseIndex] ?? 0)
+          reverseDiagonal >= -overlapLimit &&
+          reverseDiagonal <= overlapLimit &&
+          reverse[offset + reverseDiagonal]! >= 0 &&
+          beforeIndex >= beforeLength - reverse[offset + reverseDiagonal]!
         ) {
           return {
             beforeIndex: beforeStart + beforeIndex,
@@ -617,18 +607,13 @@ function findMyersSplit(
       }
     }
 
-    for (
-      let diagonal = -distance + reverseStart;
-      diagonal <= distance - reverseEnd;
-      diagonal += 2
-    ) {
+    for (let diagonal = diagonalMin; diagonal <= diagonalMax; diagonal += 2) {
       const vectorIndex = offset + diagonal
       let beforeIndex =
         diagonal === -distance ||
-        (diagonal !== distance &&
-          (reverse[vectorIndex - 1] ?? -1) < (reverse[vectorIndex + 1] ?? -1))
-          ? (reverse[vectorIndex + 1] ?? 0)
-          : (reverse[vectorIndex - 1] ?? -1) + 1
+        (diagonal !== distance && reverse[vectorIndex - 1]! < reverse[vectorIndex + 1]!)
+          ? reverse[vectorIndex + 1]!
+          : reverse[vectorIndex - 1]! + 1
       let afterIndex = beforeIndex - diagonal
 
       while (
@@ -642,21 +627,17 @@ function findMyersSplit(
 
       reverse[vectorIndex] = beforeIndex
 
-      if (beforeIndex > beforeLength) {
-        reverseEnd += 2
-      } else if (afterIndex > afterLength) {
-        reverseStart += 2
-      } else if (!overlapsOnForwardPass) {
+      if (!overlapsOnForwardPass && beforeIndex <= beforeLength && afterIndex <= afterLength) {
         const forwardDiagonal = delta - diagonal
-        const forwardIndex = offset + forwardDiagonal
-        const forwardBeforeIndex = forward[forwardIndex] ?? -1
 
         if (
-          forwardIndex >= 0 &&
-          forwardIndex < vectorLength &&
-          forwardBeforeIndex >= 0 &&
-          forwardBeforeIndex >= beforeLength - beforeIndex
+          forwardDiagonal >= -overlapLimit &&
+          forwardDiagonal <= overlapLimit &&
+          forward[offset + forwardDiagonal]! >= 0 &&
+          forward[offset + forwardDiagonal]! >= beforeLength - beforeIndex
         ) {
+          const forwardBeforeIndex = forward[offset + forwardDiagonal]!
+
           return {
             beforeIndex: beforeStart + forwardBeforeIndex,
             afterIndex: afterStart + forwardBeforeIndex - forwardDiagonal,
