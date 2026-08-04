@@ -70,6 +70,21 @@ describe('diff', () => {
     ])
   })
 
+  it('treats identical references as equal only under default equality', () => {
+    const shared = [1, 2, 3]
+
+    expect(diff(shared, shared)).toEqual([{ operation: EQUAL, value: [1, 2, 3] }])
+    expect(diffRanges(shared, shared)).toEqual([
+      { operation: EQUAL, beforeStart: 0, beforeEnd: 3, afterStart: 0, afterEnd: 3 },
+    ])
+    expect(diff(shared, shared, { equals: () => false })).toEqual([
+      { operation: DELETE, value: [1, 2, 3] },
+      { operation: INSERT, value: [1, 2, 3] },
+    ])
+    expect(() => diff('same', 'same', { maxEditDistance: -1 })).toThrow(RangeError)
+    expect(diff('', '', { maxEditDistance: 0 })).toEqual([])
+  })
+
   it('fails explicitly when the edit-distance budget is exceeded', () => {
     expect(() => diff('abc', 'xyz', { maxEditDistance: 5 })).toThrow(DiffLimitError)
     expect(() => diff('', 'abc', { maxEditDistance: 2 })).toThrow(DiffLimitError)

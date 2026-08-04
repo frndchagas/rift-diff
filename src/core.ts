@@ -43,6 +43,12 @@ export function diffRanges<Element>(
 ): DiffRange[] {
   validateMaxEditDistance(options.maxEditDistance)
 
+  // Identical references are only a proven equality when elements compare with the default
+  // reflexive equality; a caller-provided function may deliberately reject identical elements.
+  if (options.equals === undefined && before === after) {
+    return before.length === 0 ? [] : [createRange(EQUAL, 0, before.length, 0, after.length)]
+  }
+
   if (typeof before === 'string' && typeof after === 'string' && options.equals === undefined) {
     return diffStringRanges(before, after, options.maxEditDistance)
   }
@@ -122,10 +128,6 @@ function diffStringRanges(
   after: string,
   maxEditDistance: number | undefined,
 ): DiffRange[] {
-  if (before === after) {
-    return before.length === 0 ? [] : [createRange(EQUAL, 0, before.length, 0, after.length)]
-  }
-
   const prefixLength = findCommonStringPrefix(before, after)
   const suffixLength = findCommonStringSuffix(before, after, prefixLength)
   const beforeMiddleEnd = before.length - suffixLength
@@ -944,7 +946,7 @@ function findCommonStringSuffix(before: string, after: string, prefixLength: num
   return candidateLength
 }
 
-function validateMaxEditDistance(maxEditDistance: number | undefined): void {
+export function validateMaxEditDistance(maxEditDistance: number | undefined): void {
   if (
     maxEditDistance !== undefined &&
     (!Number.isSafeInteger(maxEditDistance) || maxEditDistance < 0)

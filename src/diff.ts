@@ -1,5 +1,5 @@
-import { diffRanges } from './core.js'
-import { INSERT } from './types.js'
+import { diffRanges, validateMaxEditDistance } from './core.js'
+import { EQUAL, INSERT } from './types.js'
 import type { DiffChunk, DiffOptions, Sliceable } from './types.js'
 
 export function diff<Element, Slice>(
@@ -7,6 +7,11 @@ export function diff<Element, Slice>(
   after: Sliceable<Element, Slice>,
   options: DiffOptions<Element> = {},
 ): DiffChunk<Slice>[] {
+  if (options.equals === undefined && before === after) {
+    validateMaxEditDistance(options.maxEditDistance)
+    return before.length === 0 ? [] : [{ operation: EQUAL, value: before.slice(0, before.length) }]
+  }
+
   return diffRanges(before, after, options).map((range) => {
     if (range.operation === INSERT) {
       return {
