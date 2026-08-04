@@ -1,0 +1,1442 @@
+[
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "equal-short",
+    "medianNs": 26.66900794839735,
+    "checksum": 4174655037,
+    "iterations": 1672161
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "equal-short",
+    "medianNs": 27.517454145633863,
+    "checksum": 1235782573,
+    "iterations": 1663473
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "append-character",
+    "medianNs": 55.99563899069918,
+    "checksum": 1994474880,
+    "iterations": 811968
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "append-character",
+    "medianNs": 56.02208144420151,
+    "checksum": 1429763704,
+    "iterations": 817836
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "middle-replacement",
+    "medianNs": 460.9293278474582,
+    "checksum": 3093088876,
+    "iterations": 100379
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "middle-replacement",
+    "medianNs": 459.17418592778694,
+    "checksum": 3605639660,
+    "iterations": 99899
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "large-middle-insert",
+    "medianNs": 689.980660404877,
+    "checksum": 1758201924,
+    "iterations": 68564
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "large-middle-insert",
+    "medianNs": 687.7070277110691,
+    "checksum": 1221640377,
+    "iterations": 69539
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "dispersed-edits",
+    "medianNs": 55675.66968325797,
+    "checksum": 827969124,
+    "iterations": 884
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "dispersed-edits",
+    "medianNs": 55029.18140068884,
+    "checksum": 3896651453,
+    "iterations": 871
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "contained-delete",
+    "medianNs": 86.80633278654176,
+    "checksum": 3002847180,
+    "iterations": 553532
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "contained-delete",
+    "medianNs": 85.27703914323706,
+    "checksum": 2829390263,
+    "iterations": 543721
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "repetitive-shift",
+    "medianNs": 9245.011393350762,
+    "checksum": 1721371196,
+    "iterations": 5354
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "repetitive-shift",
+    "medianNs": 9767.985319351768,
+    "checksum": 3119373550,
+    "iterations": 5245
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "fully-different",
+    "medianNs": 431364.7078651685,
+    "checksum": 2972770058,
+    "iterations": 89
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "fully-different",
+    "medianNs": 846874.222222223,
+    "checksum": 2620644876,
+    "iterations": 54
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "equal-short",
+    "medianNs": 11.707639818339997,
+    "checksum": 3921907406,
+    "iterations": 4355169
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "equal-short",
+    "medianNs": 11.60883165549874,
+    "checksum": 3672050036,
+    "iterations": 4156548
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "append-character",
+    "medianNs": 49.16613085448389,
+    "checksum": 4116439532,
+    "iterations": 940006
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "append-character",
+    "medianNs": 48.47777327332297,
+    "checksum": 725822272,
+    "iterations": 966944
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "middle-replacement",
+    "medianNs": 449.6446456104504,
+    "checksum": 574268068,
+    "iterations": 105717
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "middle-replacement",
+    "medianNs": 444.20664258972124,
+    "checksum": 1791573744,
+    "iterations": 105772
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "large-middle-insert",
+    "medianNs": 676.732070556924,
+    "checksum": 938190166,
+    "iterations": 70638
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "large-middle-insert",
+    "medianNs": 687.0935088387575,
+    "checksum": 2578445311,
+    "iterations": 70881
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "dispersed-edits",
+    "medianNs": 55705.999999999935,
+    "checksum": 2841854345,
+    "iterations": 875
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "dispersed-edits",
+    "medianNs": 55027.209328782716,
+    "checksum": 3445201669,
+    "iterations": 879
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "contained-delete",
+    "medianNs": 64.16610425428186,
+    "checksum": 1208153025,
+    "iterations": 736411
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "contained-delete",
+    "medianNs": 64.20192297225225,
+    "checksum": 1042389656,
+    "iterations": 734904
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "repetitive-shift",
+    "medianNs": 9336.075235712902,
+    "checksum": 467570126,
+    "iterations": 5197
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "repetitive-shift",
+    "medianNs": 9255.189915966392,
+    "checksum": 947823729,
+    "iterations": 5355
+  },
+  {
+    "rep": 0,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "fully-different",
+    "medianNs": 420449.4273504279,
+    "checksum": 427926098,
+    "iterations": 117
+  },
+  {
+    "rep": 0,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "fully-different",
+    "medianNs": 837818.7500000005,
+    "checksum": 1993280536,
+    "iterations": 60
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "equal-short",
+    "medianNs": 26.82572110737349,
+    "checksum": 2369616064,
+    "iterations": 1655232
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "equal-short",
+    "medianNs": 27.617789462627346,
+    "checksum": 3759229358,
+    "iterations": 1618430
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "append-character",
+    "medianNs": 56.86325311254598,
+    "checksum": 1132799658,
+    "iterations": 809225
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "append-character",
+    "medianNs": 55.863273933615844,
+    "checksum": 2235635308,
+    "iterations": 793382
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "middle-replacement",
+    "medianNs": 463.57936974172844,
+    "checksum": 2328285752,
+    "iterations": 95326
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "middle-replacement",
+    "medianNs": 461.70148123798424,
+    "checksum": 2340559844,
+    "iterations": 100389
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "large-middle-insert",
+    "medianNs": 689.4650205170879,
+    "checksum": 4102406970,
+    "iterations": 69698
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "large-middle-insert",
+    "medianNs": 694.1821129707117,
+    "checksum": 3425320712,
+    "iterations": 66920
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "dispersed-edits",
+    "medianNs": 55890.18160919541,
+    "checksum": 1768163342,
+    "iterations": 870
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "dispersed-edits",
+    "medianNs": 55743.103448275826,
+    "checksum": 1768163342,
+    "iterations": 870
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "contained-delete",
+    "medianNs": 85.71736431605495,
+    "checksum": 1519034591,
+    "iterations": 538881
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "contained-delete",
+    "medianNs": 86.14871488538465,
+    "checksum": 2284155514,
+    "iterations": 554114
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "repetitive-shift",
+    "medianNs": 9482.142857142859,
+    "checksum": 3658987980,
+    "iterations": 5180
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "repetitive-shift",
+    "medianNs": 9405.09425911559,
+    "checksum": 2517887768,
+    "iterations": 5156
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "fully-different",
+    "medianNs": 862056.7413793098,
+    "checksum": 546896948,
+    "iterations": 58
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "fully-different",
+    "medianNs": 419876.7578947366,
+    "checksum": 3046077422,
+    "iterations": 95
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "equal-short",
+    "medianNs": 11.597512569649155,
+    "checksum": 1372668017,
+    "iterations": 4260461
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "equal-short",
+    "medianNs": 11.77400581348281,
+    "checksum": 3424683578,
+    "iterations": 4286243
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "append-character",
+    "medianNs": 50.03255954870782,
+    "checksum": 1100922388,
+    "iterations": 953883
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "append-character",
+    "medianNs": 48.869597190322686,
+    "checksum": 361155416,
+    "iterations": 970930
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "middle-replacement",
+    "medianNs": 449.566457207952,
+    "checksum": 2502762384,
+    "iterations": 108852
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "middle-replacement",
+    "medianNs": 445.41501509962217,
+    "checksum": 3841391016,
+    "iterations": 113579
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "large-middle-insert",
+    "medianNs": 675.9946745642519,
+    "checksum": 1432598582,
+    "iterations": 73609
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "large-middle-insert",
+    "medianNs": 684.6807128169985,
+    "checksum": 1162880958,
+    "iterations": 72950
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "dispersed-edits",
+    "medianNs": 55132.39170506912,
+    "checksum": 779883156,
+    "iterations": 868
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "dispersed-edits",
+    "medianNs": 55991.68577981657,
+    "checksum": 2974325256,
+    "iterations": 872
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "contained-delete",
+    "medianNs": 64.32478206690787,
+    "checksum": 3319984437,
+    "iterations": 732679
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "contained-delete",
+    "medianNs": 64.04097919546818,
+    "checksum": 1426112815,
+    "iterations": 741425
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "repetitive-shift",
+    "medianNs": 9286.18200757576,
+    "checksum": 523104544,
+    "iterations": 5280
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "repetitive-shift",
+    "medianNs": 9265.94105343222,
+    "checksum": 942015185,
+    "iterations": 5259
+  },
+  {
+    "rep": 1,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "fully-different",
+    "medianNs": 862594.6271186448,
+    "checksum": 473687286,
+    "iterations": 59
+  },
+  {
+    "rep": 1,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "fully-different",
+    "medianNs": 420437.72043010755,
+    "checksum": 1138337794,
+    "iterations": 93
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "equal-short",
+    "medianNs": 27.68549977480172,
+    "checksum": 2553470972,
+    "iterations": 1571948
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "equal-short",
+    "medianNs": 27.774790076881644,
+    "checksum": 4201590446,
+    "iterations": 1608446
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "append-character",
+    "medianNs": 56.21379405608936,
+    "checksum": 4197308482,
+    "iterations": 810813
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "append-character",
+    "medianNs": 56.13544059221065,
+    "checksum": 2374958610,
+    "iterations": 800661
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "middle-replacement",
+    "medianNs": 465.8923766816142,
+    "checksum": 3297250532,
+    "iterations": 98789
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "middle-replacement",
+    "medianNs": 465.91219843215094,
+    "checksum": 2249373304,
+    "iterations": 98734
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "large-middle-insert",
+    "medianNs": 691.0295314928574,
+    "checksum": 158571641,
+    "iterations": 67555
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "large-middle-insert",
+    "medianNs": 694.181675630523,
+    "checksum": 1684564563,
+    "iterations": 68237
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "dispersed-edits",
+    "medianNs": 59700.315230224296,
+    "checksum": 1271440746,
+    "iterations": 847
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "dispersed-edits",
+    "medianNs": 59781.01503759403,
+    "checksum": 3897146790,
+    "iterations": 798
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "contained-delete",
+    "medianNs": 86.77047195554053,
+    "checksum": 449899210,
+    "iterations": 540178
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "contained-delete",
+    "medianNs": 87.70626154104413,
+    "checksum": 2428275002,
+    "iterations": 536130
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "repetitive-shift",
+    "medianNs": 9247.246696035241,
+    "checksum": 1351525754,
+    "iterations": 4994
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "repetitive-shift",
+    "medianNs": 9653.6877394636,
+    "checksum": 3884656792,
+    "iterations": 5220
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "fully-different",
+    "medianNs": 419560.04301075294,
+    "checksum": 1138337794,
+    "iterations": 93
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "fully-different",
+    "medianNs": 856834.7166666664,
+    "checksum": 1536816976,
+    "iterations": 60
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "equal-short",
+    "medianNs": 11.59455729367523,
+    "checksum": 23428348,
+    "iterations": 4278570
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "equal-short",
+    "medianNs": 11.662105814154726,
+    "checksum": 510862460,
+    "iterations": 4264042
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "append-character",
+    "medianNs": 49.21538692433948,
+    "checksum": 1543467036,
+    "iterations": 939486
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "append-character",
+    "medianNs": 48.18456553552454,
+    "checksum": 4205416286,
+    "iterations": 957351
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "middle-replacement",
+    "medianNs": 464.1808270077039,
+    "checksum": 1052711220,
+    "iterations": 106577
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "middle-replacement",
+    "medianNs": 464.3838470586038,
+    "checksum": 954544408,
+    "iterations": 107126
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "large-middle-insert",
+    "medianNs": 703.8079595793769,
+    "checksum": 123526623,
+    "iterations": 70657
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "large-middle-insert",
+    "medianNs": 680.6258187696853,
+    "checksum": 41575970,
+    "iterations": 71754
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "dispersed-edits",
+    "medianNs": 56234.10308056875,
+    "checksum": 1550481820,
+    "iterations": 844
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "dispersed-edits",
+    "medianNs": 56067.69679633866,
+    "checksum": 1326823868,
+    "iterations": 874
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "contained-delete",
+    "medianNs": 64.49972637409145,
+    "checksum": 3295846553,
+    "iterations": 725443
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "contained-delete",
+    "medianNs": 64.57635386603698,
+    "checksum": 1694935921,
+    "iterations": 720363
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "repetitive-shift",
+    "medianNs": 9415.7889697434,
+    "checksum": 701435246,
+    "iterations": 5222
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "repetitive-shift",
+    "medianNs": 9941.784128210087,
+    "checksum": 3811512865,
+    "iterations": 5179
+  },
+  {
+    "rep": 2,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "fully-different",
+    "medianNs": 431225.0978260872,
+    "checksum": 2182304088,
+    "iterations": 92
+  },
+  {
+    "rep": 2,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "fully-different",
+    "medianNs": 879022.2586206888,
+    "checksum": 1991603384,
+    "iterations": 58
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "equal-short",
+    "medianNs": 27.32211834504295,
+    "checksum": 3842797986,
+    "iterations": 1601250
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "equal-short",
+    "medianNs": 27.054602601994798,
+    "checksum": 578489538,
+    "iterations": 1567874
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "append-character",
+    "medianNs": 56.7877864065614,
+    "checksum": 24712358,
+    "iterations": 789219
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "append-character",
+    "medianNs": 57.702985744594585,
+    "checksum": 2340933058,
+    "iterations": 781949
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "middle-replacement",
+    "medianNs": 485.73363390820873,
+    "checksum": 949520028,
+    "iterations": 95151
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "middle-replacement",
+    "medianNs": 480.2963636934081,
+    "checksum": 1922166476,
+    "iterations": 95619
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "large-middle-insert",
+    "medianNs": 716.9833256067835,
+    "checksum": 3197620971,
+    "iterations": 66869
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "large-middle-insert",
+    "medianNs": 721.5444419526058,
+    "checksum": 3361870427,
+    "iterations": 66885
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "dispersed-edits",
+    "medianNs": 60353.95864661656,
+    "checksum": 2693200564,
+    "iterations": 798
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "dispersed-edits",
+    "medianNs": 62871.439560439576,
+    "checksum": 219288657,
+    "iterations": 819
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "contained-delete",
+    "medianNs": 87.75127461586719,
+    "checksum": 3173033139,
+    "iterations": 514861
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "contained-delete",
+    "medianNs": 89.12779706994237,
+    "checksum": 28128055,
+    "iterations": 519785
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "repetitive-shift",
+    "medianNs": 9766.37181874612,
+    "checksum": 4192232959,
+    "iterations": 4833
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "repetitive-shift",
+    "medianNs": 9733.707422721009,
+    "checksum": 2321839973,
+    "iterations": 5079
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "fully-different",
+    "medianNs": 882389.1600000001,
+    "checksum": 1927050084,
+    "iterations": 50
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "fully-different",
+    "medianNs": 445927.07608695637,
+    "checksum": 3001801936,
+    "iterations": 92
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "equal-short",
+    "medianNs": 12.275407034289094,
+    "checksum": 30103488,
+    "iterations": 4170656
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "equal-short",
+    "medianNs": 11.936066951285198,
+    "checksum": 26638108,
+    "iterations": 4155738
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "append-character",
+    "medianNs": 54.90153382053022,
+    "checksum": 1110888960,
+    "iterations": 941440
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "append-character",
+    "medianNs": 51.73914823586081,
+    "checksum": 617778758,
+    "iterations": 871955
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "middle-replacement",
+    "medianNs": 463.2759626211399,
+    "checksum": 3810540772,
+    "iterations": 103909
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "middle-replacement",
+    "medianNs": 452.7736374829886,
+    "checksum": 516857524,
+    "iterations": 108017
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "large-middle-insert",
+    "medianNs": 699.0126715945083,
+    "checksum": 4078757359,
+    "iterations": 71025
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "large-middle-insert",
+    "medianNs": 703.7616222675199,
+    "checksum": 2531235418,
+    "iterations": 71135
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "dispersed-edits",
+    "medianNs": 58949.14028776977,
+    "checksum": 2497974442,
+    "iterations": 834
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "dispersed-edits",
+    "medianNs": 58744.67761557182,
+    "checksum": 680525662,
+    "iterations": 822
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "contained-delete",
+    "medianNs": 66.4507090388151,
+    "checksum": 2701865374,
+    "iterations": 716886
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "contained-delete",
+    "medianNs": 65.64591361491269,
+    "checksum": 1585216526,
+    "iterations": 711558
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "repetitive-shift",
+    "medianNs": 9634.398553557465,
+    "checksum": 3945488524,
+    "iterations": 5116
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "repetitive-shift",
+    "medianNs": 9535.792372881358,
+    "checksum": 2754632552,
+    "iterations": 5192
+  },
+  {
+    "rep": 3,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "fully-different",
+    "medianNs": 888743.0500000003,
+    "checksum": 1993280536,
+    "iterations": 60
+  },
+  {
+    "rep": 3,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "fully-different",
+    "medianNs": 431621.6818181818,
+    "checksum": 2657353328,
+    "iterations": 88
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "equal-short",
+    "medianNs": 28.822687083704583,
+    "checksum": 2863024312,
+    "iterations": 1625048
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "equal-short",
+    "medianNs": 28.879513190751304,
+    "checksum": 1686215898,
+    "iterations": 1512954
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "append-character",
+    "medianNs": 60.83216437525402,
+    "checksum": 2890255550,
+    "iterations": 784887
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "append-character",
+    "medianNs": 60.020607446443364,
+    "checksum": 3129871968,
+    "iterations": 792432
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "middle-replacement",
+    "medianNs": 476.60659717559065,
+    "checksum": 1752248540,
+    "iterations": 96799
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "middle-replacement",
+    "medianNs": 470.7042784124465,
+    "checksum": 1923815128,
+    "iterations": 98214
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "large-middle-insert",
+    "medianNs": 702.8265903706011,
+    "checksum": 1199477305,
+    "iterations": 67107
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "large-middle-insert",
+    "medianNs": 714.9069624706211,
+    "checksum": 532099695,
+    "iterations": 66801
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "dispersed-edits",
+    "medianNs": 58753.11138310891,
+    "checksum": 4090422839,
+    "iterations": 817
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "dispersed-edits",
+    "medianNs": 58721.0606060606,
+    "checksum": 3460174911,
+    "iterations": 825
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "contained-delete",
+    "medianNs": 87.91268696880469,
+    "checksum": 2188302471,
+    "iterations": 544409
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "contained-delete",
+    "medianNs": 88.49350552943636,
+    "checksum": 429699922,
+    "iterations": 525370
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "repetitive-shift",
+    "medianNs": 9628.41530054645,
+    "checksum": 547351640,
+    "iterations": 5124
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "repetitive-shift",
+    "medianNs": 10693.484176577309,
+    "checksum": 2349009279,
+    "iterations": 4961
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-materialized",
+    "scenario": "fully-different",
+    "medianNs": 429625.00000000047,
+    "checksum": 2335386276,
+    "iterations": 82
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-materialized",
+    "scenario": "fully-different",
+    "medianNs": 870157.6862745096,
+    "checksum": 2743120390,
+    "iterations": 51
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "equal-short",
+    "medianNs": 11.939179165594824,
+    "checksum": 738241137,
+    "iterations": 3852397
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "equal-short",
+    "medianNs": 11.822902328539243,
+    "checksum": 1657422892,
+    "iterations": 4264562
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "append-character",
+    "medianNs": 49.99859314110888,
+    "checksum": 3097606016,
+    "iterations": 936128
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "append-character",
+    "medianNs": 50.053103462061664,
+    "checksum": 1143807198,
+    "iterations": 950503
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "middle-replacement",
+    "medianNs": 450.01882757268135,
+    "checksum": 249431908,
+    "iterations": 107077
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "middle-replacement",
+    "medianNs": 452.752511731007,
+    "checksum": 440105100,
+    "iterations": 104211
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "large-middle-insert",
+    "medianNs": 693.769536800228,
+    "checksum": 167017276,
+    "iterations": 70380
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "large-middle-insert",
+    "medianNs": 698.1255893819754,
+    "checksum": 965503255,
+    "iterations": 71049
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "dispersed-edits",
+    "medianNs": 57842.59809750297,
+    "checksum": 2403101590,
+    "iterations": 841
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "dispersed-edits",
+    "medianNs": 61873.56103575827,
+    "checksum": 1568724425,
+    "iterations": 811
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "contained-delete",
+    "medianNs": 65.59856576964651,
+    "checksum": 2107796135,
+    "iterations": 718713
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "contained-delete",
+    "medianNs": 66.0344933044372,
+    "checksum": 701990243,
+    "iterations": 719357
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "repetitive-shift",
+    "medianNs": 9642.209891682003,
+    "checksum": 3023661891,
+    "iterations": 4893
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "repetitive-shift",
+    "medianNs": 9735.284918424188,
+    "checksum": 134601498,
+    "iterations": 5026
+  },
+  {
+    "rep": 4,
+    "side": "head",
+    "benchmark": "rift-ranges",
+    "scenario": "fully-different",
+    "medianNs": 429718.6344086024,
+    "checksum": 1138337794,
+    "iterations": 93
+  },
+  {
+    "rep": 4,
+    "side": "base",
+    "benchmark": "rift-ranges",
+    "scenario": "fully-different",
+    "medianNs": 860454.1016949153,
+    "checksum": 473687286,
+    "iterations": 59
+  }
+]

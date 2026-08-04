@@ -171,6 +171,10 @@ Raw data:
 - This resolves retained-trace growth, not the whole performance problem. `fast-diff` still has the
   lowest Bun RSS at every stress size, and the adaptive engine remains slightly above both
   `fast-diff` and `fast-myers-diff` at 1,000 units on Node.js.
+- Follow-up: an interleaved A/B verification with an identical harness and only `core.ts` swapped
+  (see [exploratory/](exploratory/README.md)) did not reproduce the common-scenario losses in this
+  table on either runtime; every common-case delta fell inside run-to-run spread while the fully
+  different gain reproduced. The losses above were between-run drift, not implementation cost.
 
 ## Memory baseline: `95e0897284c4`
 

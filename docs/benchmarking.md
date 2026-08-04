@@ -95,6 +95,22 @@ bun run bench:memory:node -- --label memory-stress --output bench/results/memory
 
 Use `--profile quick`, `--profile standard`, or `--profile full` to select the measurement budget.
 
+## Between-run drift and small deltas
+
+Comparing a new run against a baseline JSON recorded earlier measures the implementation change
+plus everything that drifted between the two runs: thermal state, background load, and per-process
+JIT variance. An interleaved A/B verification against the retained-trace core (see
+`bench/results/exploratory/`) quantified that floor on the current machine:
+
+- Node.js medians move a few percent between repetitions even with isolated workers; deltas inside
+  roughly ±5% are not attributable to code without an interleaved same-period comparison.
+- Bun's materialized lane showed per-process spreads up to 38% across repeated isolated workers,
+  so single-process Bun comparisons cannot resolve materialized deltas in the ±10% region.
+
+Treat cross-run deltas below these floors as unresolved, not as regressions or wins. When a small
+delta matters, rerun both implementations in the same period with interleaved, order-alternating
+isolated workers, and prefer medians across worker processes over a single process per cell.
+
 ## Known limitations
 
 - Laptop thermals and background work still affect results even with isolated workers and rotation.
