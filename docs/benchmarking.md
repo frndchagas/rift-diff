@@ -41,9 +41,12 @@ runs in a fresh process so garbage collection, JIT state, and inline caches are 
 competitor. The controller shuffles process order with a fixed seed.
 
 Each worker calibrates its batch size, warms the implementation, and records multiple fixed-target
-samples. Reports preserve every raw sample and summarize them with median throughput, p95 latency,
-and relative standard deviation (RSD). A checksum consumes every returned array length during the
-timed loop.
+samples. Because per-process JIT variance can dominate small deltas — especially on Bun's
+materialized lane — every cell runs several isolated worker processes, scheduled round-robin so
+each cell samples different phases of the run. The reported cell median is the median of
+per-process medians, p95 pools every raw sample, and the stability RSD is computed across
+per-process medians. Reports preserve every raw sample per process. A checksum consumes every
+returned array length during the timed loop.
 
 Memory uses another set of fresh processes and executes one diff per process. The reported value is
 the median peak resident set size above an empty worker that loads the same benchmark bundle and
@@ -62,8 +65,9 @@ small RSS observation as proof of asymptotic behavior. Its percentage column is 
 `Rift reduction vs trace`; positive values mean the adaptive engine used less incremental RSS, and
 the output says `more` explicitly when it did not.
 
-The `standard` profile uses seven samples with a target of 50 ms per sample. `quick` is only for
-developing the harness. `full` is intended for release evidence.
+The `standard` profile uses three isolated processes per cell, each recording seven samples with a
+target of 50 ms per sample. `quick` is only for developing the harness. `full` uses five processes
+per cell and is intended for release evidence.
 
 ## Reporting protocol
 

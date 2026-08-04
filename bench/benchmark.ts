@@ -39,6 +39,7 @@ interface Profile {
   readonly warmupMilliseconds: number
   readonly sampleMilliseconds: number
   readonly sampleCount: number
+  readonly processesPerCell: number
   readonly memorySampleCount: number
 }
 
@@ -50,12 +51,27 @@ interface WorkerResult {
   readonly checksum: number
 }
 
-interface BenchmarkResult extends WorkerResult {
+interface WorkerProcessSample {
+  readonly iterationsPerSample: number
+  readonly samplesNanosecondsPerOperation: readonly number[]
+  readonly checksum: number
+}
+
+interface BenchmarkResult {
+  readonly benchmarkId: string
+  readonly scenarioId: string
+  readonly processes: readonly WorkerProcessSample[]
   readonly medianNanosecondsPerOperation: number
   readonly p95NanosecondsPerOperation: number
   readonly medianOperationsPerSecond: number
   readonly relativeStandardDeviation: number
   readonly editDistance: number
+}
+
+interface ComparableThroughputResult {
+  readonly benchmarkId: string
+  readonly scenarioId: string
+  readonly medianOperationsPerSecond: number
 }
 
 interface MemoryWorkerResult {
@@ -87,7 +103,7 @@ interface MemoryReport {
 }
 
 interface BenchmarkReport {
-  readonly schemaVersion: 1
+  readonly schemaVersion: 2
   readonly label: string
   readonly generatedAt: string
   readonly commit: string
@@ -117,6 +133,16 @@ interface BenchmarkReport {
     readonly lane: Benchmark['lane']
   }[]
   readonly results: readonly BenchmarkResult[]
+  readonly memory?: MemoryReport
+}
+
+interface StoredBenchmarkReport {
+  readonly schemaVersion: 1 | 2
+  readonly runtime: {
+    readonly name: string
+    readonly version: string
+  }
+  readonly results: readonly ComparableThroughputResult[]
   readonly memory?: MemoryReport
 }
 
@@ -234,6 +260,7 @@ const profiles: Readonly<Record<string, Profile>> = {
     warmupMilliseconds: 30,
     sampleMilliseconds: 15,
     sampleCount: 3,
+    processesPerCell: 2,
     memorySampleCount: 2,
   },
   standard: {
@@ -242,6 +269,7 @@ const profiles: Readonly<Record<string, Profile>> = {
     warmupMilliseconds: 150,
     sampleMilliseconds: 50,
     sampleCount: 7,
+    processesPerCell: 3,
     memorySampleCount: 5,
   },
   full: {
@@ -250,6 +278,7 @@ const profiles: Readonly<Record<string, Profile>> = {
     warmupMilliseconds: 500,
     sampleMilliseconds: 200,
     sampleCount: 15,
+    processesPerCell: 5,
     memorySampleCount: 9,
   },
 }
@@ -294,33 +323,59 @@ function runController(selectedProfile: Profile): void {
     scenarios.flatMap((scenario) => benchmarks.map((benchmark) => ({ benchmark, scenario }))),
     0x5eed,
   )
-  const results: BenchmarkResult[] = []
+  const cellProcesses = new Map<string, WorkerProcessSample[]>()
 
-  for (const { benchmark, scenario } of combinations) {
-    const workerResult: WorkerResult = JSON.parse(
-      runWorker([
-        '--profile',
-        selectedProfile.name,
-        '--worker-benchmark',
-        benchmark.id,
-        '--worker-scenario',
-        scenario.id,
-      ]),
-    )
-    const samples = workerResult.samplesNanosecondsPerOperation.toSorted(
-      (left, right) => left - right,
-    )
-    const medianNanosecondsPerOperation = percentile(samples, 0.5)
+  for (let round = 0; round < selectedProfile.processesPerCell; round += 1) {
+    for (const { benchmark, scenario } of combinations) {
+      const workerResult: WorkerResult = JSON.parse(
+        runWorker([
+          '--profile',
+          selectedProfile.name,
+          '--worker-benchmark',
+          benchmark.id,
+          '--worker-scenario',
+          scenario.id,
+        ]),
+      )
+      const key = `${benchmark.id}:${scenario.id}`
+      const processes = cellProcesses.get(key) ?? []
 
-    results.push({
-      ...workerResult,
-      medianNanosecondsPerOperation,
-      p95NanosecondsPerOperation: percentile(samples, 0.95),
-      medianOperationsPerSecond: 1_000_000_000 / medianNanosecondsPerOperation,
-      relativeStandardDeviation: relativeStandardDeviation(samples),
-      editDistance: inspectedDistances.get(`${benchmark.id}:${scenario.id}`)!,
-    })
+      processes.push({
+        iterationsPerSample: workerResult.iterationsPerSample,
+        samplesNanosecondsPerOperation: workerResult.samplesNanosecondsPerOperation,
+        checksum: workerResult.checksum,
+      })
+      cellProcesses.set(key, processes)
+    }
   }
+
+  const results: BenchmarkResult[] = combinations.map(({ benchmark, scenario }) => {
+    const key = `${benchmark.id}:${scenario.id}`
+    const processes = cellProcesses.get(key)
+
+    if (!processes || processes.length !== selectedProfile.processesPerCell) {
+      throw new Error(`Missing worker processes for ${key}`)
+    }
+
+    const perProcessMedians = processes
+      .map((process) => median(process.samplesNanosecondsPerOperation))
+      .toSorted((left, right) => left - right)
+    const pooledSamples = processes
+      .flatMap((process) => process.samplesNanosecondsPerOperation)
+      .toSorted((left, right) => left - right)
+    const medianNanosecondsPerOperation = percentile(perProcessMedians, 0.5)
+
+    return {
+      benchmarkId: benchmark.id,
+      scenarioId: scenario.id,
+      processes,
+      medianNanosecondsPerOperation,
+      p95NanosecondsPerOperation: percentile(pooledSamples, 0.95),
+      medianOperationsPerSecond: 1_000_000_000 / medianNanosecondsPerOperation,
+      relativeStandardDeviation: relativeStandardDeviation(perProcessMedians),
+      editDistance: inspectedDistances.get(key)!,
+    }
+  })
 
   const runtime = process.versions.bun
     ? { name: 'Bun', version: process.versions.bun }
@@ -333,7 +388,7 @@ function runController(selectedProfile: Profile): void {
   }
 
   const report: BenchmarkReport = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     label: readArgument('--label') ?? 'unlabelled',
     generatedAt: new Date().toISOString(),
     commit: readGitCommit(),
@@ -559,7 +614,7 @@ function verifyImplementations(): ReadonlyMap<string, number> {
   return distances
 }
 
-function printReport(report: BenchmarkReport, comparison: BenchmarkReport | undefined): void {
+function printReport(report: BenchmarkReport, comparison: StoredBenchmarkReport | undefined): void {
   if (comparison && comparison.runtime.name !== report.runtime.name) {
     throw new Error(
       `Cannot compare ${report.runtime.name} results with ${comparison.runtime.name} results`,
@@ -571,7 +626,7 @@ function printReport(report: BenchmarkReport, comparison: BenchmarkReport | unde
     `${report.system.platform} ${report.system.architecture} · ${report.system.cpu} · commit ${report.commit}${report.dirty ? ' (dirty)' : ''}`,
   )
   console.log(
-    `${report.profile.sampleCount} isolated samples · ${report.profile.sampleMilliseconds} ms target/sample · median ops/s`,
+    `${report.profile.processesPerCell} isolated processes/cell · ${report.profile.sampleCount} samples × ${report.profile.sampleMilliseconds} ms/process · median of per-process medians, ops/s`,
   )
   console.log('')
   console.log('## Fair comparison: materialized text')
@@ -641,7 +696,9 @@ function printReport(report: BenchmarkReport, comparison: BenchmarkReport | unde
   if (unstableResults.length > 0) {
     console.log('')
     console.log('## Stability warnings')
-    console.log('RSD at or above 5%; repeat these measurements before drawing a close comparison.')
+    console.log(
+      'RSD across per-process medians at or above 5%; repeat these measurements before drawing a close comparison.',
+    )
 
     for (const result of unstableResults) {
       const benchmark = report.benchmarks.find((candidate) => candidate.id === result.benchmarkId)
@@ -713,21 +770,21 @@ function printMemoryReport(
   )
 }
 
-function readReport(path: string): BenchmarkReport {
-  const report: BenchmarkReport = JSON.parse(readFileSync(path, 'utf8'))
+function readReport(path: string): StoredBenchmarkReport {
+  const report: StoredBenchmarkReport = JSON.parse(readFileSync(path, 'utf8'))
 
-  if (report.schemaVersion !== 1) {
+  if (report.schemaVersion !== 1 && report.schemaVersion !== 2) {
     throw new Error(`Unsupported benchmark report schema in ${path}`)
   }
 
   return report
 }
 
-function findResult(
-  results: readonly BenchmarkResult[],
+function findResult<Result extends ComparableThroughputResult>(
+  results: readonly Result[],
   benchmarkId: string,
   scenarioId: string,
-): BenchmarkResult {
+): Result {
   const result = results.find(
     (candidate) => candidate.benchmarkId === benchmarkId && candidate.scenarioId === scenarioId,
   )
@@ -786,6 +843,13 @@ function readGitCommit(): string {
 
 function readGitDirtyState(): boolean {
   return execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim().length > 0
+}
+
+function median(values: readonly number[]): number {
+  return percentile(
+    values.toSorted((left, right) => left - right),
+    0.5,
+  )
 }
 
 function percentile(sortedValues: readonly number[], probability: number): number {
@@ -870,7 +934,10 @@ function formatByteChange(current: BenchmarkMemoryResult, previous: BenchmarkMem
   return `${change > 0 ? '+' : '-'}${formatBytes(Math.abs(change))}`
 }
 
-function formatChange(current: BenchmarkResult, previous: BenchmarkResult): string {
+function formatChange(
+  current: ComparableThroughputResult,
+  previous: ComparableThroughputResult,
+): string {
   const change = current.medianOperationsPerSecond / previous.medianOperationsPerSecond - 1
   return `${change >= 0 ? '+' : ''}${formatPercent(change)}`
 }
