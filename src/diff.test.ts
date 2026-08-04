@@ -101,6 +101,51 @@ describe('diffRanges invariants', () => {
     }
   })
 
+  it('keeps wide middles minimal when the reachable frontier is narrow', () => {
+    const spread = 'The quick brown fox jumps over the lazy dog. '.repeat(10)
+    const edgeBefore = `A${spread}B`
+    const edgeAfter = `C${spread}D`
+    const edgeRanges = diffRanges(edgeBefore, edgeAfter)
+
+    expect(reconstruct(edgeBefore, edgeAfter, edgeRanges)).toBe(edgeAfter)
+    expect(editDistance(edgeRanges)).toBe(minimumInsertDeleteDistance(edgeBefore, edgeAfter))
+    expectRangesToBeCanonical(edgeRanges)
+
+    const characters = [...spread]
+    for (let index = 22; index < characters.length; index += 45) {
+      characters[index] = '#'
+    }
+    const dispersedAfter = characters.join('')
+    const dispersedRanges = diffRanges(spread, dispersedAfter)
+
+    expect(reconstruct(spread, dispersedAfter, dispersedRanges)).toBe(dispersedAfter)
+    expect(editDistance(dispersedRanges)).toBe(minimumInsertDeleteDistance(spread, dispersedAfter))
+    expectRangesToBeCanonical(dispersedRanges)
+
+    expect(
+      reconstruct(edgeBefore, edgeAfter, diffRanges(edgeBefore, edgeAfter, { maxEditDistance: 4 })),
+    ).toBe(edgeAfter)
+    expect(() => diffRanges(edgeBefore, edgeAfter, { maxEditDistance: 3 })).toThrow(DiffLimitError)
+
+    const sharedNumbers = Array.from({ length: 200 }, (_, index) => index)
+    const beforeNumbers = [901, ...sharedNumbers, 902]
+    const afterNumbers = [801, ...sharedNumbers, 802]
+    const numberRanges = diffRanges(beforeNumbers, afterNumbers, {
+      equals: (left, right) => left === right,
+    })
+    const reconstructedNumbers = numberRanges
+      .filter((range) => range.operation !== DELETE)
+      .flatMap((range) =>
+        range.operation === INSERT
+          ? afterNumbers.slice(range.afterStart, range.afterEnd)
+          : beforeNumbers.slice(range.beforeStart, range.beforeEnd),
+      )
+
+    expect(reconstructedNumbers).toEqual(afterNumbers)
+    expect(editDistance(numberRanges)).toBe(4)
+    expectRangesToBeCanonical(numberRanges)
+  })
+
   it('remains minimal after switching to linear-space reconstruction', () => {
     const random = createRandom(0x1a2b3c4d)
 

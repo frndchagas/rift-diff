@@ -313,8 +313,11 @@ function calculateTraceMyersRanges<Element>(
   const afterLength = afterEnd - afterStart
   const maximumDistance = beforeLength + afterLength
   const distanceLimit = Math.min(maxEditDistance ?? maximumDistance, maximumDistance)
-  const offset = maximumDistance + 1
-  const frontier = new Int32Array(2 * maximumDistance + 3)
+  // The frontier only ever holds diagonals within the reachable distance, so its size follows
+  // the effective distance limit instead of the input length.
+  const frontierDistanceLimit = Math.min(distanceLimit, traceDistanceLimit)
+  const offset = frontierDistanceLimit + 1
+  const frontier = new Int32Array(2 * frontierDistanceLimit + 3)
   const trace: Int32Array[] = []
 
   frontier.fill(-1)
