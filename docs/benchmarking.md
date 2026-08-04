@@ -110,6 +110,11 @@ bun run bench:memory:node -- --label memory-stress --output bench/results/memory
 
 Use `--profile quick`, `--profile standard`, or `--profile full` to select the measurement budget.
 
+Informative Ubuntu x86-64 runs come from `.github/workflows/bench.yml`, dispatched manually with
+`gh workflow run bench.yml`. Raw JSONs land in the run's artifacts; shared-runner numbers are
+informative context, never baselines for accepting optimizations. Bun 1.3.14 reports an invalid
+constant `maxRSS` on Linux, so Bun memory numbers from that platform are excluded.
+
 ## Between-run drift and small deltas
 
 Comparing a new run against a baseline JSON recorded earlier measures the implementation change

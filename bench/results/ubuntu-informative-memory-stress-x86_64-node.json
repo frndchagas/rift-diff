@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "label": "ubuntu-informative-memory-stress",
+  "generatedAt": "2026-08-04T19:52:30.341Z",
+  "commit": "ebd109f71b7b3a6a37abbc49e01a57427991ce40",
+  "dirty": false,
+  "runtime": {
+    "name": "Node.js",
+    "version": "26.6.0"
+  },
+  "system": {
+    "platform": "linux",
+    "release": "6.17.0-1020-azure",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "logicalCpuCount": 4,
+    "totalMemoryBytes": 16766423040
+  },
+  "sampleCount": 5,
+  "controlPeakResidentByteSamples": [51904512, 51912704, 51912704, 51986432, 51994624],
+  "medianControlPeakResidentBytes": 51912704,
+  "scenarios": [
+    {
+      "id": "fully-different-300",
+      "name": "300 vs 300 code units",
+      "beforeLength": 300,
+      "afterLength": 300
+    },
+    {
+      "id": "fully-different-600",
+      "name": "600 vs 600 code units",
+      "beforeLength": 600,
+      "afterLength": 600
+    },
+    {
+      "id": "fully-different-1000",
+      "name": "1000 vs 1000 code units",
+      "beforeLength": 1000,
+      "afterLength": 1000
+    }
+  ],
+  "engines": [
+    {
+      "id": "rift-trace-reference",
+      "name": "Rift trace reference"
+    },
+    {
+      "id": "rift-adaptive",
+      "name": "rift-diff adaptive"
+    },
+    {
+      "id": "fast-diff",
+      "name": "fast-diff"
+    },
+    {
+      "id": "fast-myers-diff",
+      "name": "fast-myers-diff"
+    },
+    {
+      "id": "jsdiff",
+      "name": "jsdiff"
+    }
+  ],
+  "results": [
+    {
+      "engineId": "rift-adaptive",
+      "scenarioId": "fully-different-300",
+      "peakResidentByteSamples": [55177216, 55177216, 55398400, 56246272, 56446976],
+      "medianPeakResidentBytes": 55398400,
+      "incrementalPeakResidentBytes": 3485696
+    },
+    {
+      "engineId": "fast-diff",
+      "scenarioId": "fully-different-600",
+      "peakResidentByteSamples": [59826176, 59842560, 59854848, 59912192, 60481536],
+      "medianPeakResidentBytes": 59854848,
+      "incrementalPeakResidentBytes": 7942144
+    },
+    {
+      "engineId": "rift-trace-reference",
+      "scenarioId": "fully-different-600",
+      "peakResidentByteSamples": [71086080, 71340032, 71553024, 71565312, 71598080],
+      "medianPeakResidentBytes": 71553024,
+      "incrementalPeakResidentBytes": 19640320
+    },
+    {
+      "engineId": "jsdiff",
+      "scenarioId": "fully-different-1000",
+      "peakResidentByteSamples": [67428352, 67477504, 67555328, 67710976, 67850240],
+      "medianPeakResidentBytes": 67555328,
+      "incrementalPeakResidentBytes": 15642624
+    },
+    {
+      "engineId": "fast-diff",
+      "scenarioId": "fully-different-300",
+      "peakResidentByteSamples": [57880576, 57925632, 58007552, 58155008, 58863616],
+      "medianPeakResidentBytes": 58007552,
+      "incrementalPeakResidentBytes": 6094848
+    },
+    {
+      "engineId": "rift-trace-reference",
+      "scenarioId": "fully-different-300",
+      "peakResidentByteSamples": [61562880, 62255104, 62275584, 62451712, 62472192],
+      "medianPeakResidentBytes": 62275584,
+      "incrementalPeakResidentBytes": 10362880
+    },
+    {
+      "engineId": "fast-diff",
+      "scenarioId": "fully-different-1000",
+      "peakResidentByteSamples": [59854848, 59916288, 60887040, 61022208, 61640704],
+      "medianPeakResidentBytes": 60887040,
+      "incrementalPeakResidentBytes": 8974336
+    },
+    {
+      "engineId": "fast-myers-diff",
+      "scenarioId": "fully-different-600",
+      "peakResidentByteSamples": [60026880, 60342272, 60510208, 60780544, 60903424],
+      "medianPeakResidentBytes": 60510208,
+      "incrementalPeakResidentBytes": 8597504
+    },
+    {
+      "engineId": "jsdiff",
+      "scenarioId": "fully-different-600",
+      "peakResidentByteSamples": [63651840, 63832064, 63868928, 63959040, 63987712],
+      "medianPeakResidentBytes": 63868928,
+      "incrementalPeakResidentBytes": 11956224
+    },
+    {
+      "engineId": "rift-adaptive",
+      "scenarioId": "fully-different-600",
+      "peakResidentByteSamples": [58904576, 59133952, 59162624, 59199488, 59203584],
+      "medianPeakResidentBytes": 59162624,
+      "incrementalPeakResidentBytes": 7249920
+    },
+    {
+      "engineId": "rift-adaptive",
+      "scenarioId": "fully-different-1000",
+      "peakResidentByteSamples": [59125760, 60903424, 60903424, 61018112, 61325312],
+      "medianPeakResidentBytes": 60903424,
+      "incrementalPeakResidentBytes": 8990720
+    },
+    {
+      "engineId": "fast-myers-diff",
+      "scenarioId": "fully-different-1000",
+      "peakResidentByteSamples": [60682240, 60952576, 60985344, 61079552, 61165568],
+      "medianPeakResidentBytes": 60985344,
+      "incrementalPeakResidentBytes": 9072640
+    },
+    {
+      "engineId": "fast-myers-diff",
+      "scenarioId": "fully-different-300",
+      "peakResidentByteSamples": [59682816, 59686912, 59723776, 59740160, 59998208],
+      "medianPeakResidentBytes": 59723776,
+      "incrementalPeakResidentBytes": 7811072
+    },
+    {
+      "engineId": "rift-trace-reference",
+      "scenarioId": "fully-different-1000",
+      "peakResidentByteSamples": [92495872, 92798976, 92905472, 92921856, 93335552],
+      "medianPeakResidentBytes": 92905472,
+      "incrementalPeakResidentBytes": 40992768
+    },
+    {
+      "engineId": "jsdiff",
+      "scenarioId": "fully-different-300",
+      "peakResidentByteSamples": [62275584, 62730240, 62824448, 62836736, 63008768],
+      "medianPeakResidentBytes": 62824448,
+      "incrementalPeakResidentBytes": 10911744
+    }
+  ]
+}

@@ -59,6 +59,66 @@ inputs instead of materialized text. Its raw results remain available in the JSO
 Values are median operations per second. Higher is better. Statistical variation is reported
 separately instead of appearing as an ambiguous percentage beside throughput.
 
+## Ubuntu x86-64 informative baseline: `ebd109f71b7b`
+
+- Date: 2026-08-04
+- Machine: GitHub-hosted `ubuntu-latest` runner, AMD EPYC 7763, 4 logical CPUs (shared VM)
+- Runtimes: Bun 1.3.14 and Node.js 26.6.0
+- Throughput profile: standard, three isolated processes per cell
+- Workflow: `.github/workflows/bench.yml` (`workflow_dispatch`), raw JSONs downloaded from the
+  run artifacts
+
+These numbers are informative, not comparable to the Apple M4 Max tables: the runner is a shared
+4-vCPU VM and its runtime versions differ (Node.js 26.6.0, Bun 1.3.14). They exist to verify that
+the competitive picture holds on x86-64 Linux, which it does: the multiprocess estimator produced
+zero cells at or above 5% RSD on Node.js and one on Bun (`rift-diff` real prose, 6.4%).
+
+Standing per scenario (median ops/s against the best other measured implementation in the same
+run):
+
+| Scenario                      | Node.js 26.6 rift-diff | Node.js standing | Bun 1.3.14 rift-diff | Bun standing |
+| ----------------------------- | ---------------------: | ---------------- | -------------------: | ------------ |
+| Equal short text              |                 58.07M | 13.84× behind    |               66.46M | 1.45× behind |
+| Single append                 |                  8.61M | leads 2.37×      |                7.44M | leads 2.00×  |
+| Middle replacement            |                  1.09M | leads 1.43×      |               848.3k | leads 1.53×  |
+| Large text, small insert      |                  1.09M | leads 1.46×      |               463.8k | leads 1.20×  |
+| Dispersed replacements        |                  44.2k | leads 4.28×      |                15.9k | leads 1.42×  |
+| Length-imbalanced containment |                  5.81M | leads 1.56×      |                4.34M | leads 1.58×  |
+| Repetitive shifted text       |                 178.8k | leads 1.88×      |                69.5k | 1.57× behind |
+| Fully different text          |                   1.2k | leads 1.21×      |                 1.3k | leads 2.01×  |
+| Real code file edit           |                   1.1k | 1.42× behind     |                 1.2k | leads 1.65×  |
+| Real json config edit         |                  11.9k | leads 1.13×      |                 8.3k | 1.24× behind |
+| Real log stream update        |                 912.5k | leads 1.70×      |               668.5k | leads 1.86×  |
+| Real prose revision           |                   6.3k | leads 1.05×      |                 4.8k | leads 1.21×  |
+| Array of code lines           |                 154.7k | 1.16× behind     |               145.1k | leads 1.15×  |
+| Array of number tokens        |                  10.1k | 2.07× behind     |                17.7k | 1.24× behind |
+| Typed array with sparse edits |                  28.7k | leads 1.16×      |                59.5k | leads 2.61×  |
+
+Reading by platform:
+
+- The contract gaps reproduce on x86-64: real code (diff-match-patch half-match) and number
+  tokens (`Object.is` on V8) behave exactly as recorded on macOS ARM64, confirming they are
+  structural rather than machine-specific.
+- Node.js equal short text is the one large platform anomaly: `fast-diff` measured 803.62M ops/s
+  (about 1.2 ns per call) on V8 x86-64 — consistent with escape analysis eliminating its result
+  allocation entirely — versus 107M on the same code on ARM64. `rift-diff` at 58M ops/s remains
+  far above any practical requirement in that cell.
+- Repetitive shifted text on Bun trails 1.57× (1.53× on ARM64) and Bun real json trails 1.24×,
+  now from a stable cell, confirming the ARM64 reading that had been marked unresolved.
+- Node.js scaled memory stress is valid and matches the ARM64 shape: the adaptive engine used
+  3.32 MiB incremental at 300 units versus 9.88 MiB for the same-bundle trace reference, and
+  8.57 MiB versus 39.09 MiB at 1,000 units.
+- Bun 1.3.14 on Linux reports a constant, implausible `process.resourceUsage().maxRSS` (157 KiB
+  for the empty worker and every cell alike), so every Bun memory number from this platform is
+  invalid and excluded from interpretation. Throughput numbers are unaffected. This needs
+  revisiting when the pinned Bun version moves.
+
+Raw data:
+[ubuntu-informative-x86_64-node.json](ubuntu-informative-x86_64-node.json),
+[ubuntu-informative-x86_64-bun.json](ubuntu-informative-x86_64-bun.json),
+[ubuntu-informative-memory-stress-x86_64-node.json](ubuntu-informative-memory-stress-x86_64-node.json),
+[ubuntu-informative-memory-stress-x86_64-bun.json](ubuntu-informative-memory-stress-x86_64-bun.json)
+
 ## Sequence scenarios: `96f2e3dffb9f`
 
 - Date: 2026-08-04
