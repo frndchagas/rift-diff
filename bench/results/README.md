@@ -12,6 +12,166 @@ inputs instead of materialized text. Its raw results remain available in the JSO
 Values are median operations per second. Higher is better. Statistical variation is reported
 separately instead of appearing as an ambiguous percentage beside throughput.
 
+## Adaptive linear-space Myers: `2bf128b53ad7`
+
+- Benchmark harness: `207860ac9aea`
+- Date: 2026-08-04
+- Machine: Apple M4 Max, 14 logical CPUs, 36 GiB RAM
+- System: macOS 26.5, arm64
+- Throughput profile: standard, seven isolated samples, 50 ms target per sample
+- Memory profile: five fresh processes per cell
+- Baseline implementation: `95e0897284c4`
+
+`Rift before` is the retained-trace implementation at the baseline commit. `Rift now` is the
+adaptive implementation. `Rift change` always compares those two columns; incumbent values are
+fresh measurements from the same run as `Rift now`.
+
+### Bun 1.4.0 throughput — materialized output
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |      33.43M |   31.77M |       -5.0% |       111.55M |               2.82M |      1.42M |
+| Single append                 |      20.41M |   18.14M |      -11.1% |        10.72M |               1.43M |     699.6k |
+| Middle replacement            |       2.62M |    2.37M |       -9.5% |         1.58M |              236.8k |      79.8k |
+| Large text, small insert      |       1.58M |    1.55M |       -2.0% |         1.22M |               19.3k |       7.6k |
+| Dispersed replacements        |       18.0k |    16.3k |       -9.3% |          5.3k |               25.9k |      13.6k |
+| Length-imbalanced containment |      10.46M |    9.87M |       -5.6% |         6.58M |                6.0k |       1.1k |
+| Repetitive shifted text       |       86.9k |    83.6k |       -3.8% |          4.0k |              265.1k |      75.5k |
+| Fully different text          |         962 |     1.1k |      +14.5% |           577 |                1.9k |        131 |
+
+Low-level range API:
+
+| Scenario                      | Ranges before | Ranges now | Change |
+| ----------------------------- | ------------: | ---------: | -----: |
+| Equal short text              |       114.10M |    111.16M |  -2.6% |
+| Single append                 |        31.54M |     30.43M |  -3.5% |
+| Middle replacement            |         2.67M |      2.64M |  -1.1% |
+| Large text, small insert      |         1.66M |      1.60M |  -3.6% |
+| Dispersed replacements        |         18.1k |      16.5k |  -8.5% |
+| Length-imbalanced containment |        15.36M |     15.33M |  -0.2% |
+| Repetitive shifted text       |         84.8k |      84.4k |  -0.4% |
+| Fully different text          |           944 |       1.1k | +17.7% |
+
+Stability warnings: current materialized dispersed replacements measured 7.2% RSD,
+`fast-diff` dispersed replacements 9.3%, and `fast-myers-diff` equal short text 9.1%.
+
+Raw data: [adaptive-linear-space-macos-arm64-bun.json](adaptive-linear-space-macos-arm64-bun.json)
+
+### Node.js 26.0.0 throughput — materialized output
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |      43.14M |   42.49M |       -1.5% |       101.41M |               3.20M |     874.9k |
+| Single append                 |      20.47M |   18.87M |       -7.9% |         9.71M |               2.10M |     486.6k |
+| Middle replacement            |       2.45M |    2.38M |       -2.9% |         1.87M |              433.9k |      56.4k |
+| Large text, small insert      |       1.50M |    1.38M |       -8.0% |         1.26M |               45.4k |       4.9k |
+| Dispersed replacements        |       17.5k |    15.5k |      -11.5% |          6.8k |               22.3k |       9.8k |
+| Length-imbalanced containment |      11.88M |   11.69M |       -1.5% |         7.62M |                4.8k |       1.3k |
+| Repetitive shifted text       |      107.9k |    98.0k |       -9.2% |          4.0k |              191.4k |      49.0k |
+| Fully different text          |        1.2k |     2.2k |      +92.5% |          2.2k |                1.6k |        163 |
+
+Low-level range API:
+
+| Scenario                      | Ranges before | Ranges now | Change |
+| ----------------------------- | ------------: | ---------: | -----: |
+| Equal short text              |       100.42M |     99.51M |  -0.9% |
+| Single append                 |        27.02M |     25.52M |  -5.5% |
+| Middle replacement            |         2.60M |      2.50M |  -3.9% |
+| Large text, small insert      |         1.51M |      1.53M |  +1.4% |
+| Dispersed replacements        |         17.7k |      16.1k |  -8.8% |
+| Length-imbalanced containment |        15.45M |     15.10M |  -2.3% |
+| Repetitive shifted text       |        109.9k |      98.0k | -10.8% |
+| Fully different text          |          1.1k |       2.1k | +89.0% |
+
+Stability warnings: current materialized dispersed replacements measured 12.0% RSD. Additional
+warnings in the raw report affect two `fast-diff` cases, `fast-myers-diff` equality, range
+containment, and jsdiff dispersed replacements.
+
+Raw data: [adaptive-linear-space-macos-arm64-node.json](adaptive-linear-space-macos-arm64-node.json)
+
+### Incremental peak RSS — the same eight scenarios
+
+Lower is better. `Rift change` is the absolute change from the retained-trace baseline; `≤ control`
+means no increase above the empty-worker median was measurable.
+
+#### Bun 1.4.0
+
+Empty-worker peak: 29.75 MiB.
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |      48 KiB |  128 KiB |     +80 KiB |        64 KiB |             224 KiB |    240 KiB |
+| Single append                 |      96 KiB |  112 KiB |     +16 KiB |       128 KiB |             352 KiB |    240 KiB |
+| Middle replacement            |      80 KiB |  128 KiB |     +48 KiB |       144 KiB |             784 KiB |   1.34 MiB |
+| Large text, small insert      |     160 KiB |  160 KiB |         0 B |       240 KiB |             848 KiB |   5.64 MiB |
+| Dispersed replacements        |    4.89 MiB | 5.80 MiB |    +928 KiB |      3.53 MiB |            3.88 MiB |   4.05 MiB |
+| Length-imbalanced containment |      96 KiB |   96 KiB |         0 B |       144 KiB |            6.25 MiB |   9.30 MiB |
+| Repetitive shifted text       |    2.72 MiB | 2.67 MiB |     -48 KiB |      4.53 MiB |             816 KiB |   2.34 MiB |
+| Fully different text          |    9.84 MiB | 7.36 MiB |   -2.48 MiB |      4.36 MiB |            7.72 MiB |  18.19 MiB |
+
+#### Node.js 26.0.0
+
+Empty-worker peak: 49.30 MiB.
+
+| Scenario                      | Rift before |  Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | --------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |     160 KiB | ≤ control |    -160 KiB |     ≤ control |           ≤ control |     48 KiB |
+| Single append                 |     112 KiB | ≤ control |    -112 KiB |        32 KiB |              80 KiB |  ≤ control |
+| Middle replacement            |   ≤ control | ≤ control |         0 B |     ≤ control |              32 KiB |    272 KiB |
+| Large text, small insert      |      80 KiB | ≤ control |     -80 KiB |     ≤ control |              80 KiB |   4.66 MiB |
+| Dispersed replacements        |    1.80 MiB |  1.66 MiB |    -144 KiB |       896 KiB |              48 KiB |   3.88 MiB |
+| Length-imbalanced containment |      32 KiB | ≤ control |     -32 KiB |       160 KiB |            2.22 MiB |   1.97 MiB |
+| Repetitive shifted text       |     224 KiB |   144 KiB |     -80 KiB |      1.02 MiB |              32 KiB |    240 KiB |
+| Fully different text          |    7.14 MiB |  1.69 MiB |   -5.45 MiB |      1.66 MiB |            2.70 MiB |   7.14 MiB |
+
+### Scaled memory stress — same-run trace reference
+
+These are deliberately dissimilar inputs. `Trace reference` is a benchmark-only implementation of
+the previous retained-frontier strategy in the same bundle. `Rift reduction vs trace` refers only
+to those two adjacent columns and says `more` when Rift consumed more RSS.
+
+#### Bun 1.4.0
+
+Empty-worker peak: 29.58 MiB.
+
+| Scenario                  | Trace reference | Rift adaptive | Rift reduction vs trace | fast-diff | fast-myers-diff |    jsdiff |
+| ------------------------- | --------------: | ------------: | ----------------------: | --------: | --------------: | --------: |
+| 300 vs 300 code units     |        7.30 MiB |      7.73 MiB |               6.0% more |  4.41 MiB |        7.64 MiB | 18.16 MiB |
+| 600 vs 600 code units     |       16.08 MiB |     10.34 MiB |              35.7% less |  4.91 MiB |        7.69 MiB | 45.80 MiB |
+| 1,000 vs 1,000 code units |       43.39 MiB |     15.86 MiB |              63.4% less |  5.05 MiB |       11.81 MiB | 55.78 MiB |
+
+Raw data:
+[adaptive-linear-space-memory-stress-macos-arm64-bun.json](adaptive-linear-space-memory-stress-macos-arm64-bun.json)
+
+#### Node.js 26.0.0
+
+Empty-worker peak: 49.09 MiB.
+
+| Scenario                  | Trace reference | Rift adaptive | Rift reduction vs trace | fast-diff | fast-myers-diff |    jsdiff |
+| ------------------------- | --------------: | ------------: | ----------------------: | --------: | --------------: | --------: |
+| 300 vs 300 code units     |        7.16 MiB |      2.84 MiB |              60.3% less |  3.53 MiB |        4.38 MiB |  7.20 MiB |
+| 600 vs 600 code units     |       17.44 MiB |      4.91 MiB |              71.9% less |  5.53 MiB |        5.81 MiB | 11.22 MiB |
+| 1,000 vs 1,000 code units |       37.02 MiB |      6.14 MiB |              83.4% less |  5.52 MiB |        5.64 MiB | 11.44 MiB |
+
+Raw data:
+[adaptive-linear-space-memory-stress-macos-arm64-node.json](adaptive-linear-space-memory-stress-macos-arm64-node.json)
+
+### Interpretation
+
+- At 300 code units per side, the ordinary matrix reduced fully different incremental RSS from
+  9.84 MiB to 7.36 MiB on Bun and from 7.14 MiB to 1.69 MiB on Node.js.
+- At 1,000 code units per side in the same-run stress matrix, adaptive reconstruction used 63.4%
+  less incremental RSS than retained trace on Bun and 83.4% less on Node.js.
+- Bun's fixed JIT and allocator cost dominates the 300-unit case: adaptive Rift measured 6.0% more
+  than the smaller trace-reference module there, then crossed below it by 600 units.
+- Fully different throughput improved 14.5% on Bun and 92.5% on Node.js. The raw tables also show
+  lower throughput in several common scenarios. Some competitor results slowed between runs too,
+  and both dispersed Rift results are unstable, so only the large fully different gain is treated as
+  established by this run.
+- This resolves retained-trace growth, not the whole performance problem. `fast-diff` still has the
+  lowest Bun RSS at every stress size, and the adaptive engine remains slightly above both
+  `fast-diff` and `fast-myers-diff` at 1,000 units on Node.js.
+
 ## Memory baseline: `95e0897284c4`
 
 Memory values are the median peak resident set size above an empty worker with the same runtime,

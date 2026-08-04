@@ -56,12 +56,20 @@ JavaScript implementation reference for those practical layers.
 
 1. Preserve equality and affix trimming before workspace allocation.
 2. Detect bounded local edits and containment after trimming.
-3. Use the current typed-array Myers trace only below an explicit workspace threshold.
-4. Use bidirectional Myers reconstruction for large exact workloads.
+3. Use the typed-array Myers trace only below an explicit workspace threshold. Implemented with a
+   32-edit probe and a 1.5 MiB retained-frontier ceiling.
+4. Use bidirectional Myers reconstruction for large exact workloads. Implemented with reusable
+   forward/reverse typed arrays and an explicit work stack.
 5. Prototype O(NP) independently for length-imbalanced inputs.
 6. Keep patience/histogram anchors behind an explicit readable-mode contract.
 7. Treat bit-parallel and WFA approaches as research tracks until they can emit the required ranges
    under the same semantics.
+
+The first linear-space implementation removes the retained-trace growth and improves the fully
+different case, but it is not yet the final performance point. The committed scaled RSS matrix
+shows the asymptotic crossover while also showing that `fast-diff` remains leaner on Bun in the
+tested sizes. The next research target is reducing split/reconstruction overhead before adding a
+new algorithm family.
 
 ## Sources
 

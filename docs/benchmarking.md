@@ -51,6 +51,17 @@ fixtures. Node's `process.resourceUsage().maxRSS` value is converted from KiB to
 is already expressed in bytes. This subtraction reduces runtime and module-loading noise without
 pretending to measure JavaScript heap allocations alone.
 
+The scaled memory-stress matrix measures fully different inputs at 300, 600, and 1,000 UTF-16 code
+units per side. It runs the adaptive engine, every incumbent, and a benchmark-only retained-trace
+Myers reference from the same bundle. That reference isolates the algorithmic change from runtime,
+module-loading, and machine drift. It is not production code and is never included in the package.
+
+Small cases can be dominated by JIT and allocator granularity even after subtracting the empty
+worker. The scaled matrix therefore reports the crossover and growth curve instead of treating one
+small RSS observation as proof of asymptotic behavior. Its percentage column is always named
+`Rift reduction vs trace`; positive values mean the adaptive engine used less incremental RSS, and
+the output says `more` explicitly when it did not.
+
 The `standard` profile uses seven samples with a target of 50 ms per sample. `quick` is only for
 developing the harness. `full` is intended for release evidence.
 
@@ -78,6 +89,8 @@ and raw peak-RSS samples.
 ```bash
 bun run bench:bun -- --label improvement --compare bench/results/baseline-bun.json --output bench/results/improvement-bun.json
 bun run bench:node -- --label improvement --compare bench/results/baseline-node.json --output bench/results/improvement-node.json
+bun run bench:memory:bun -- --label memory-stress --output bench/results/memory-stress-bun.json
+bun run bench:memory:node -- --label memory-stress --output bench/results/memory-stress-node.json
 ```
 
 Use `--profile quick`, `--profile standard`, or `--profile full` to select the measurement budget.
@@ -88,4 +101,6 @@ Use `--profile quick`, `--profile standard`, or `--profile full` to select the m
 - Incremental peak RSS is process-level and includes runtime allocator behavior; it is not the same
   as algorithm workspace or JavaScript heap allocation volume.
 - Cold-start, browser, real repository corpora, arrays, and typed arrays are not measured yet.
+- Incremental RSS still contains code compilation and runtime allocator effects. The scaled trace
+  comparison exposes the growth trend but is not a byte-exact JavaScript heap profile.
 - Microbenchmarks guide profiling but do not replace workload-level measurements in consuming apps.

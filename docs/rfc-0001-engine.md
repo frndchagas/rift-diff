@@ -10,8 +10,9 @@
 copied slices. It will select an algorithm according to input shape, expose resource limits, and
 separate the synchronous hot path from cooperative asynchronous work.
 
-The initial repository contains a correct Myers baseline. It intentionally does not claim the
-final performance or memory profile described below.
+The repository now contains a correct adaptive Myers engine: bounded retained trace for nearby
+edits and bidirectional linear-space reconstruction for larger edit distances. It intentionally
+does not claim that the current implementation is the final performance point described below.
 
 ## Goals
 
@@ -75,8 +76,9 @@ Tokenization produces index views rather than copied arrays. Supported modes wil
 - Minimal mode: no heuristics that alter edit distance.
 - Readable mode: stable anchors and cleanup may trade minimality for human-friendly output.
 
-The production Myers implementation should reconstruct ranges in linear space. The initial trace
-implementation is a correctness baseline and benchmark reference, not the final engine.
+The Myers implementation reconstructs large edit scripts in linear space while retaining the trace
+path for bounded nearby edits. The original trace-only implementation remains a benchmark reference,
+not the final engine.
 
 ### 5. Output
 

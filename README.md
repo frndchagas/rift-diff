@@ -29,10 +29,10 @@ for (const range of diffRanges('before', 'after')) {
 }
 ```
 
-The initial implementation provides a correct Myers baseline with common-affix trimming and an
-explicit edit-distance limit. The adaptive, linear-space and cooperative asynchronous engines are
-specified in [RFC 0001](docs/rfc-0001-engine.md) and will be implemented before the first stable
-release.
+The current implementation combines common-affix and containment fast paths with a bounded Myers
+trace for nearby edits and bidirectional Myers reconstruction for larger edit distances. An
+explicit edit-distance limit remains available. Cooperative asynchronous work and the remaining
+adaptive modes are specified in [RFC 0001](docs/rfc-0001-engine.md).
 
 The rationale for keeping the default engine in TypeScript, along with the evidence required for a
 future native backend, is recorded in [ADR 0002](docs/adr-0002-typescript-first.md).
@@ -60,6 +60,8 @@ bun run validate
 bun run build
 bun run bench
 bun run bench:node
+bun run bench:memory:bun
+bun run bench:memory:node
 ```
 
 ## License
