@@ -24,6 +24,28 @@ interface InspectedChunk {
 
 interface MeasuredOutput {
   readonly length: number
+  readonly anchor: number
+}
+
+function anchorText(chunks: readonly { readonly value: string }[]): number {
+  let anchor = 0
+
+  for (const chunk of chunks) {
+    const value = chunk.value
+    anchor = (anchor + value.length + (value.length > 0 ? value.charCodeAt(0) : 0)) | 0
+  }
+
+  return anchor
+}
+
+function anchorTuples(chunks: readonly (readonly [number, string])[]): number {
+  let anchor = 0
+
+  for (const [, value] of chunks) {
+    anchor = (anchor + value.length + (value.length > 0 ? value.charCodeAt(0) : 0)) | 0
+  }
+
+  return anchor
 }
 
 interface Benchmark {
@@ -243,7 +265,16 @@ const benchmarks: readonly Benchmark[] = [
     id: 'rift-ranges',
     name: 'rift core ranges',
     lane: 'ranges',
-    run: (before, after) => diffRanges(before, after),
+    run: (before, after) => {
+      const ranges = diffRanges(before, after)
+      let anchor = 0
+
+      for (const range of ranges) {
+        anchor = (anchor + range.beforeEnd - range.beforeStart + range.afterEnd) | 0
+      }
+
+      return { length: ranges.length, anchor }
+    },
     inspect: (before, after) =>
       diffRanges(before, after).map((range) => ({
         operation: range.operation,
@@ -257,14 +288,20 @@ const benchmarks: readonly Benchmark[] = [
     id: 'rift-materialized',
     name: 'rift-diff',
     lane: 'materialized',
-    run: (before, after) => riftDiff(before, after),
+    run: (before, after) => {
+      const chunks = riftDiff(before, after)
+      return { length: chunks.length, anchor: anchorText(chunks) }
+    },
     inspect: (before, after) => riftDiff(before, after),
   },
   {
     id: 'fast-diff',
     name: 'fast-diff',
     lane: 'materialized',
-    run: (before, after) => fastDiff(before, after),
+    run: (before, after) => {
+      const chunks = fastDiff(before, after)
+      return { length: chunks.length, anchor: anchorTuples(chunks) }
+    },
     inspect: (before, after) =>
       fastDiff(before, after).map(([operation, value]) => ({ operation, value })),
   },
@@ -272,7 +309,10 @@ const benchmarks: readonly Benchmark[] = [
     id: 'fast-myers-diff',
     name: 'fast-myers-diff',
     lane: 'materialized',
-    run: (before, after) => Array.from(calcSlices(before, after)),
+    run: (before, after) => {
+      const chunks = Array.from(calcSlices(before, after))
+      return { length: chunks.length, anchor: anchorTuples(chunks) }
+    },
     inspect: (before, after) =>
       Array.from(calcSlices(before, after), ([operation, value]) => ({ operation, value })),
   },
@@ -280,7 +320,10 @@ const benchmarks: readonly Benchmark[] = [
     id: 'jsdiff',
     name: 'jsdiff',
     lane: 'materialized',
-    run: (before, after) => diffChars(before, after),
+    run: (before, after) => {
+      const chunks = diffChars(before, after)
+      return { length: chunks.length, anchor: anchorText(chunks) }
+    },
     inspect: (before, after) =>
       diffChars(before, after).map((change) => ({
         operation: change.added ? INSERT : change.removed ? DELETE : 0,
@@ -383,7 +426,16 @@ const sequenceBenchmarks: readonly SequenceBenchmark[] = [
     name: 'rift core ranges',
     lane: 'ranges',
     supports: () => true,
-    run: (before, after) => diffRanges<string | number>(before, after),
+    run: (before, after) => {
+      const ranges = diffRanges<string | number>(before, after)
+      let anchor = 0
+
+      for (const range of ranges) {
+        anchor = (anchor + range.beforeEnd - range.beforeStart + range.afterEnd) | 0
+      }
+
+      return { length: ranges.length, anchor }
+    },
     inspect: (before, after) =>
       diffRanges<string | number>(before, after).map((range) => ({
         operation: range.operation,
@@ -398,13 +450,22 @@ const sequenceBenchmarks: readonly SequenceBenchmark[] = [
     name: 'rift-diff',
     lane: 'materialized',
     supports: () => true,
-    run: (before, after) =>
-      before instanceof Uint32Array && after instanceof Uint32Array
-        ? riftDiff(before, after)
-        : riftDiff<string | number, (string | number)[]>(
-            before as (string | number)[],
-            after as (string | number)[],
-          ),
+    run: (before, after) => {
+      const chunks =
+        before instanceof Uint32Array && after instanceof Uint32Array
+          ? riftDiff(before, after)
+          : riftDiff<string | number, (string | number)[]>(
+              before as (string | number)[],
+              after as (string | number)[],
+            )
+      let anchor = 0
+
+      for (const chunk of chunks) {
+        anchor = (anchor + chunk.value.length) | 0
+      }
+
+      return { length: chunks.length, anchor }
+    },
     inspect: (before, after) =>
       before instanceof Uint32Array && after instanceof Uint32Array
         ? riftDiff(before, after).map((chunk) => ({
@@ -421,7 +482,16 @@ const sequenceBenchmarks: readonly SequenceBenchmark[] = [
     name: 'fast-myers-diff',
     lane: 'materialized',
     supports: () => true,
-    run: (before, after) => Array.from(calcSlices(before, after)),
+    run: (before, after) => {
+      const chunks = Array.from(calcSlices(before, after))
+      let anchor = 0
+
+      for (const [, slice] of chunks) {
+        anchor = (anchor + slice.length) | 0
+      }
+
+      return { length: chunks.length, anchor }
+    },
     inspect: (before, after) =>
       Array.from(calcSlices(before, after), ([operation, slice]) => ({
         operation,
@@ -433,8 +503,19 @@ const sequenceBenchmarks: readonly SequenceBenchmark[] = [
     name: 'jsdiff diffArrays',
     lane: 'materialized',
     supports: (scenario) => Array.isArray(scenario.before) && Array.isArray(scenario.after),
-    run: (before, after) =>
-      diffArrays<string | number>(before as (string | number)[], after as (string | number)[]),
+    run: (before, after) => {
+      const chunks = diffArrays<string | number>(
+        before as (string | number)[],
+        after as (string | number)[],
+      )
+      let anchor = 0
+
+      for (const chunk of chunks) {
+        anchor = (anchor + chunk.value.length) | 0
+      }
+
+      return { length: chunks.length, anchor }
+    },
     inspect: (before, after) =>
       diffArrays<string | number>(before as (string | number)[], after as (string | number)[]).map(
         (change) => ({
@@ -744,7 +825,7 @@ function measureMemoryWorker(
     benchmarkId,
     scenarioId,
     peakResidentBytes: readPeakResidentBytes(),
-    checksum: Math.imul(output.length, 16_777_619) >>> 0,
+    checksum: Math.imul(output.length ^ output.anchor, 16_777_619) >>> 0,
   }
 }
 
@@ -819,7 +900,7 @@ function runBatch(
 
   for (let iteration = 0; iteration < iterations; iteration += 1) {
     const output = execute()
-    checksum = Math.imul(checksum ^ output.length, 16_777_619) >>> 0
+    checksum = Math.imul(checksum ^ output.length ^ output.anchor, 16_777_619) >>> 0
   }
 
   return {

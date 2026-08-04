@@ -119,6 +119,18 @@ Raw data:
 [ubuntu-informative-memory-stress-x86_64-node.json](ubuntu-informative-memory-stress-x86_64-node.json),
 [ubuntu-informative-memory-stress-x86_64-bun.json](ubuntu-informative-memory-stress-x86_64-bun.json)
 
+## Rectification: text rows measured at `96f2e3dffb9f` are not valid baselines
+
+The executable-cell harness introduced in `96f2e3dffb9f` changed the timed loop, and its checksum
+consumed only output lengths. On V8 that allowed allocation sinking to elide part of
+`fast-diff`'s materialized result (its equal-short cell measured 648M and later 1,062M ops/s,
+which is physically implausible), while that run's absolute levels for other implementations also
+sat about 30% below adjacent runs. The sequence-scenario conclusions of that iteration stand —
+all its implementations were affected alike within the sequence family — but its twelve text rows
+must not be used as a baseline, and the distance table published at that time mixed harness
+generations. Benchmark outputs are now anchored to their content, and the anchored baseline below
+supersedes every earlier table.
+
 ## Sequence scenarios: `96f2e3dffb9f`
 
 - Date: 2026-08-04

@@ -51,6 +51,13 @@ Before timing, every implementation must reconstruct the target. Each benchmark/
 runs in a fresh process so garbage collection, JIT state, and inline caches are not shared with a
 competitor. The controller shuffles process order with a fixed seed.
 
+Every benchmark cell returns a checksum anchor derived from the content of its output — chunk
+lengths and leading code units — which the timed loop consumes. Without the anchor, V8's
+allocation sinking can elide a competitor's entire materialized result when only the array length
+is observed, which briefly inflated one incumbent's equal-input cell to an impossible one billion
+operations per second. Any harness change invalidates prior baselines: rebaseline in the same
+period and never compare across harness generations.
+
 Each worker calibrates its batch size, warms the implementation, and records multiple fixed-target
 samples. Because per-process JIT variance can dominate small deltas — especially on Bun's
 materialized lane — every cell runs several isolated worker processes, scheduled round-robin so
