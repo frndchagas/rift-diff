@@ -6,11 +6,156 @@ The primary tables compare APIs that return materialized text chunks. `Rift befo
 committed baseline, `Rift now` is the measured improvement, and `Rift change` is the explicit change
 between them. Every incumbent is measured again in the same run as `Rift now`.
 
+## Distance to the leader
+
+Updated after every accepted iteration from the latest official run (currently `27aae0fbd9e0`,
+2026-08-04). Materialized output, median ops/s; the leader varies by scenario. `leads` means
+`rift-diff` is the fastest measured implementation in that cell.
+
+| Scenario                      | Node.js 26 rift-diff | Node.js 26 standing            | Bun 1.4 rift-diff | Bun 1.4 standing                 |
+| ----------------------------- | -------------------: | ------------------------------ | ----------------: | -------------------------------- |
+| Equal short text              |               87.98M | 1.20× behind `fast-diff`       |           122.08M | parity with `fast-diff` (Δ 0.1%) |
+| Single append                 |               19.27M | leads 1.87×                    |            20.94M | leads 1.82×                      |
+| Middle replacement            |                2.36M | leads 1.22×                    |             2.45M | leads 1.48×                      |
+| Large text, small insert      |                1.48M | leads 1.12×                    |             1.60M | leads 1.21×                      |
+| Dispersed replacements        |                33.2k | leads 1.52×                    |             30.3k | leads 1.11×                      |
+| Length-imbalanced containment |               11.58M | leads 1.48×                    |            10.55M | leads 1.49×                      |
+| Repetitive shifted text       |               143.1k | 1.44× behind `fast-myers-diff` |            129.8k | 2.12× behind `fast-myers-diff`   |
+| Fully different text          |                 2.4k | leads 1.04×                    |              1.4k | 1.43× behind `fast-myers-diff`   |
+
+Milestone target: fastest or within 10% of the leader in every scenario. Remaining gaps: equal
+short text on Node.js, repetitive shifted text on both runtimes, and fully different text on Bun.
+
 The low-level range API is kept out of these tables because it returns indexes into the original
 inputs instead of materialized text. Its raw results remain available in the JSON reports.
 
 Values are median operations per second. Higher is better. Statistical variation is reported
 separately instead of appearing as an ambiguous percentage beside throughput.
+
+## Identity fast path: `27aae0fbd9e0`
+
+- Date: 2026-08-04
+- Machine: Apple M4 Max, 14 logical CPUs, 36 GiB RAM
+- System: macOS 26.5, arm64
+- Runtimes: Bun 1.4.0 and Node.js 26.0.0
+- Throughput profile: standard, three isolated processes per cell, seven samples × 50 ms per
+  process
+- Memory profile: five fresh processes per cell
+- Baseline: the index-closure report below
+
+Both API levels now short-circuit identical inputs when element equality is the reflexive
+default, guarded by a length comparison so non-identical inputs reject in constant time. Custom
+equality functions keep the previous behavior because identity only proves equality under the
+default comparison.
+
+### Bun 1.4.0 throughput — materialized output
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |      33.60M |  122.08M |     +263.3% |       122.14M |               2.88M |      1.56M |
+| Single append                 |      21.54M |   20.94M |       -2.8% |        11.51M |               1.48M |     764.0k |
+| Middle replacement            |       2.51M |    2.45M |       -2.5% |         1.66M |              243.7k |      86.4k |
+| Large text, small insert      |       1.55M |    1.60M |       +3.2% |         1.32M |               19.9k |       8.1k |
+| Dispersed replacements        |       30.1k |    30.3k |       +0.8% |          6.5k |               27.3k |      14.9k |
+| Length-imbalanced containment |      10.06M |   10.55M |       +5.0% |         7.09M |                6.1k |       1.1k |
+| Repetitive shifted text       |      126.2k |   129.8k |       +2.9% |          4.2k |              275.5k |      82.8k |
+| Fully different text          |        1.4k |     1.4k |       +2.7% |           597 |                2.0k |        137 |
+
+Low-level range API:
+
+| Scenario                      | Ranges before | Ranges now | Change |
+| ----------------------------- | ------------: | ---------: | -----: |
+| Equal short text              |       107.78M |    120.45M | +11.8% |
+| Single append                 |        31.44M |     32.86M |  +4.5% |
+| Middle replacement            |         2.74M |      2.76M |  +0.6% |
+| Large text, small insert      |         1.68M |      1.69M |  +0.9% |
+| Dispersed replacements        |         30.5k |      30.8k |  +0.8% |
+| Length-imbalanced containment |        15.69M |     15.80M |  +0.7% |
+| Repetitive shifted text       |        129.5k |     130.5k |  +0.8% |
+| Fully different text          |          1.5k |       1.4k |  -0.3% |
+
+Stability warnings: `fast-diff` measured 7.8% RSD for equal short text and 5.8% for dispersed
+replacements, so the equal-short parity call carries that uncertainty.
+
+Raw data: [equality-fast-path-macos-arm64-bun.json](equality-fast-path-macos-arm64-bun.json)
+
+### Node.js 26.0.0 throughput — materialized output
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |      48.37M |   87.98M |      +81.9% |       106.00M |               3.41M |     951.8k |
+| Single append                 |      20.99M |   19.27M |       -8.2% |        10.31M |               2.24M |     495.0k |
+| Middle replacement            |       2.42M |    2.36M |       -2.2% |         1.93M |              473.5k |      58.6k |
+| Large text, small insert      |       1.52M |    1.48M |       -2.3% |         1.32M |               44.8k |       4.9k |
+| Dispersed replacements        |       33.8k |    33.2k |       -2.0% |          7.2k |               21.9k |      10.1k |
+| Length-imbalanced containment |      12.25M |   11.58M |       -5.4% |         7.81M |                5.2k |       1.3k |
+| Repetitive shifted text       |      146.4k |   143.1k |       -2.3% |          4.1k |              205.5k |      50.9k |
+| Fully different text          |        2.5k |     2.4k |       -3.8% |          2.3k |                1.7k |        160 |
+
+Low-level range API:
+
+| Scenario                      | Ranges before | Ranges now | Change |
+| ----------------------------- | ------------: | ---------: | -----: |
+| Equal short text              |        88.65M |    118.75M | +34.0% |
+| Single append                 |        27.00M |     28.74M |  +6.4% |
+| Middle replacement            |         2.65M |      2.62M |  -0.8% |
+| Large text, small insert      |         1.57M |      1.56M |  -1.1% |
+| Dispersed replacements        |         34.2k |      33.7k |  -1.3% |
+| Length-imbalanced containment |        15.73M |     16.60M |  +5.6% |
+| Repetitive shifted text       |        146.3k |     144.1k |  -1.5% |
+| Fully different text          |          2.5k |       2.4k |  -1.3% |
+
+Stability warnings: `rift core ranges` large text, small insert measured 11.2% RSD and `jsdiff`
+equal short text 5.3%.
+
+Raw data: [equality-fast-path-macos-arm64-node.json](equality-fast-path-macos-arm64-node.json)
+
+### Incremental peak RSS — the same eight scenarios
+
+#### Bun 1.4.0 (empty worker 29.70 MiB)
+
+| Scenario                      | Rift before | Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | -------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |      80 KiB |   16 KiB |     -64 KiB |        16 KiB |             272 KiB |    208 KiB |
+| Single append                 |     128 KiB |   80 KiB |     -48 KiB |        96 KiB |             304 KiB |    240 KiB |
+| Middle replacement            |     112 KiB |   64 KiB |     -48 KiB |       128 KiB |             656 KiB |   1.44 MiB |
+| Large text, small insert      |     160 KiB |  112 KiB |     -48 KiB |       160 KiB |             768 KiB |   5.55 MiB |
+| Dispersed replacements        |    3.55 MiB | 3.53 MiB |     -16 KiB |      3.48 MiB |            4.16 MiB |   3.89 MiB |
+| Length-imbalanced containment |     112 KiB |   64 KiB |     -48 KiB |        96 KiB |            6.19 MiB |   9.20 MiB |
+| Repetitive shifted text       |    2.55 MiB | 2.39 MiB |    -160 KiB |      4.31 MiB |             800 KiB |   2.44 MiB |
+| Fully different text          |    7.91 MiB | 7.86 MiB |     -48 KiB |      4.28 MiB |            7.67 MiB |  18.05 MiB |
+
+#### Node.js 26.0.0 (empty worker 49.08 MiB)
+
+| Scenario                      | Rift before |  Rift now | Rift change | fast-diff now | fast-myers-diff now | jsdiff now |
+| ----------------------------- | ----------: | --------: | ----------: | ------------: | ------------------: | ---------: |
+| Equal short text              |   ≤ control | ≤ control |         0 B |        32 KiB |           ≤ control |     96 KiB |
+| Single append                 |   ≤ control |   144 KiB |    +144 KiB |        48 KiB |              32 KiB |     16 KiB |
+| Middle replacement            |   ≤ control | ≤ control |         0 B |        64 KiB |           ≤ control |    320 KiB |
+| Large text, small insert      |      80 KiB | ≤ control |     -80 KiB |        32 KiB |             240 KiB |   4.59 MiB |
+| Dispersed replacements        |     352 KiB |   432 KiB |     +80 KiB |      1.08 MiB |             144 KiB |   1.36 MiB |
+| Length-imbalanced containment |   ≤ control |   320 KiB |    +320 KiB |        32 KiB |            2.14 MiB |   2.00 MiB |
+| Repetitive shifted text       |     176 KiB |   208 KiB |     +32 KiB |      1.05 MiB |              96 KiB |    320 KiB |
+| Fully different text          |    1.53 MiB |  1.53 MiB |         0 B |      1.86 MiB |            2.55 MiB |   7.17 MiB |
+
+### Interpretation
+
+- The identical-input call is the headline: +263.3% on Bun (122.08M ops/s, parity with
+  `fast-diff` inside that competitor's 7.8% RSD) and +81.9% on Node.js (87.98M, from 2.25× behind
+  to 1.20× behind `fast-diff`). The range lane also gained because the check moved to the top of
+  `diffRanges` (+34.0% Node.js, +11.8% Bun).
+- Explicitly justified tradeoff: interleaved A/B runs (six order-alternated repetitions per side)
+  isolated a real cost of about 3 ns per call on Node.js single append (-5.4% to -6.2% across
+  variants; -2.2% on Bun, inside its floor). Length-first gating and extracting the fast path did
+  not remove it. It is accepted because `rift-diff` still leads single append by 1.87× on Node.js
+  and the no-change call — the most frequent diff invocation in editors and synchronizers — moved
+  from 2.25× behind to near parity. The official table's -8.2% includes between-run drift; the
+  interleaved A/B bounds the real cost at about -6%.
+- The other Node.js declines in this table (-2.0% to -5.4%) sit at or below the established drift
+  floor, and the same cells moved positively on Bun; the containment cell's -5.4% pairs with a
+  +5.6% range-lane move in the same run, marking it as run noise rather than implementation cost.
+- Memory stayed at allocator-noise level in both directions; the scaled stress matrix was not
+  rerun because the Myers workspace did not change.
 
 ## Index-closure comparisons: `300e14dba1be`
 

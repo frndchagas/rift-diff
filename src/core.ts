@@ -43,9 +43,7 @@ export function diffRanges<Element>(
 ): DiffRange[] {
   validateMaxEditDistance(options.maxEditDistance)
 
-  // Identical references are only a proven equality when elements compare with the default
-  // reflexive equality; a caller-provided function may deliberately reject identical elements.
-  // Length inequality rejects most non-identical inputs before the reference comparison.
+  // Identity only proves equality under the default reflexive comparison.
   if (before.length === after.length && before === after && options.equals === undefined) {
     return before.length === 0 ? [] : [createRange(EQUAL, 0, before.length, 0, after.length)]
   }
@@ -172,8 +170,6 @@ function diffStringRanges(
         maxEditDistance,
       )
     ) {
-      // Comparing UTF-16 code units through a monomorphic closure avoids materializing
-      // single-character strings inside every snake scan.
       const equalsAt: IndexEquality = (beforeIndex, afterIndex) =>
         before.charCodeAt(beforeIndex) === after.charCodeAt(afterIndex)
 
@@ -314,8 +310,6 @@ function calculateTraceMyersRanges(
   const afterLength = afterEnd - afterStart
   const maximumDistance = beforeLength + afterLength
   const distanceLimit = Math.min(maxEditDistance ?? maximumDistance, maximumDistance)
-  // The frontier only ever holds diagonals within the reachable distance, so its size follows
-  // the effective distance limit instead of the input length.
   const frontierDistanceLimit = Math.min(distanceLimit, traceDistanceLimit)
   const offset = frontierDistanceLimit + 1
   const frontier = new Int32Array(2 * frontierDistanceLimit + 3)
