@@ -71,6 +71,16 @@ shape `fast-myers-diff` uses — cost V8 little (+9% on fully different inputs) 
 JavaScriptCore dramatically (+127%), confirming that the two engines punish different kernel
 patterns and both runtimes must gate every acceptance.
 
+On the real code corpus scenario, `fast-diff`'s Node.js lead was traced to diff-match-patch's
+half-match stage, verified empirically: eight `String.prototype.indexOf` calls fire during that
+single diff, splitting the problem around a long common substring through the runtime's native
+SIMD search before any Myers work. Half-match is documented by diff-match-patch as potentially
+non-optimal; on this fixture it happens to produce the minimal distance. `rift-diff` guarantees
+minimality, so this gap is a contract tradeoff rather than a kernel deficit — 92% of the
+scenario's self time already sits in the bisect kernel at about 3 ns per cell. An equivalent
+speedup under a guaranteed-minimal contract would require an explicit non-minimal mode, which RFC
+0001 reserves as a future, opt-in `readable` semantics decision.
+
 ## Proposed adaptive architecture
 
 1. Preserve equality and affix trimming before workspace allocation.

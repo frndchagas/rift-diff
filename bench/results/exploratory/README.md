@@ -55,3 +55,19 @@ Both official-table deltas were between-run drift. Note the absolute level itsel
 runs (the official runs measured 9.85 and 11.28 ns/op for the same range lane): per-run state can
 shift this cell by more than 10% in either direction, which is why only interleaved comparisons
 resolve it.
+
+## Route and cause probes for the real code gap (`8384641a7f1a` era)
+
+- Date: 2026-08-04, Node.js 26.0.0, same machine as above
+
+Three exploratory measurements, not official evidence:
+
+- Interleaved A/B with the trace probe disabled (`TRACE_DISTANCE_LIMIT = 0`) measured real code
+  at +0.4%, refuting probe waste as that scenario's bottleneck, while measuring real json at
+  +23.6% and real prose at +10.7% — which the contiguous trace buffer later captured without
+  sacrificing the probe scenarios (linear-only had cost dispersed -74% and repetitive -60%).
+- A CPU profile of the real code worker put 70.0% of self time in `findMyersSplit` and 22.0% in
+  the equality closure: the cost is the bisect kernel itself at roughly 3 ns per cell.
+- Instrumenting `String.prototype.indexOf` while running `fast-diff` on the real code fixture
+  counted eight calls, confirming diff-match-patch's half-match stage as the source of its
+  Node.js lead in that cell.

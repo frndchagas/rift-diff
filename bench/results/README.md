@@ -31,6 +31,12 @@ Milestone target: fastest or within 10% of the leader in every scenario. Remaini
 gaps: equal short text and real code file edit on Node.js; repetitive shifted text and real json
 config edit on Bun.
 
+Context for the real code gap: `fast-diff`'s lead there comes from diff-match-patch's half-match
+heuristic (verified: eight native `indexOf` searches fire during that diff), which is documented
+as potentially non-optimal and happens to produce the minimal distance on this fixture.
+`rift-diff` guarantees minimality on every input, so closing that cell would require an explicit
+non-minimal mode (see `docs/state-of-the-art.md`).
+
 The low-level range API is kept out of these tables because it returns indexes into the original
 inputs instead of materialized text. Its raw results remain available in the JSON reports.
 
