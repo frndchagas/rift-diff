@@ -8,15 +8,15 @@ between them. Every incumbent is measured again in the same run as `Rift now`.
 
 ## Distance to the leader
 
-Updated after every accepted iteration from the latest official anchored run (Node.js at
-`a697662296d5`, Bun at `36327602feed` — identical engine, the commits differ only in report
-printing; 2026-08-04). Materialized output, median ops/s; the leader varies by scenario. `leads`
+Updated after every accepted iteration from the latest official anchored run (`821b16b13839`,
+2026-08-04; non-equal rows remeasured there stayed inside the drift floor of the anchored
+baseline). Materialized output, median ops/s; the leader varies by scenario. `leads`
 means `rift-diff` is the fastest measured implementation in that cell. This table supersedes all
 pre-anchoring tables.
 
 | Scenario                      | Node.js 26 rift-diff | Node.js standing               | Bun 1.4 rift-diff | Bun standing                   |
 | ----------------------------- | -------------------: | ------------------------------ | ----------------: | ------------------------------ |
-| Equal short text              |               95.86M | 1.48× behind `fast-diff`       |           114.10M | leads 1.04×                    |
+| Equal short text              |              143.86M | parity with `fast-diff` (0.7%) |           121.38M | leads 1.05×                    |
 | Single append                 |               19.85M | leads 2.02×                    |            17.71M | leads 1.95×                    |
 | Middle replacement            |                2.36M | leads 1.24×                    |             2.25M | leads 1.57×                    |
 | Large text, small insert      |                1.50M | leads 1.15×                    |             1.42M | leads 1.56×                    |
@@ -33,9 +33,22 @@ pre-anchoring tables.
 | Typed array with sparse edits |                48.3k | within 6% of `fast-myers-diff` |            153.3k | leads 3.30×                    |
 
 Milestone target: fastest or within 10% of the leader in every scenario. Open Node.js cells:
-equal short text (1.48×, real kernel gap now that outputs are anchored), real code file edit
-(1.32×, half-match contract tradeoff), and array of number tokens (2.31×, `Object.is` contract
-tradeoff). Bun trails in repetitive shifted text, real json, and number tokens.
+real code file edit (1.32×, half-match contract tradeoff) and array of number tokens (2.31×,
+`Object.is` contract tradeoff) — both are recorded contract decisions, and every kernel-only gap
+is now closed on Node.js. Bun trails in repetitive shifted text, real json, and number tokens.
+
+## Inlinable fast path: `821b16b13839`
+
+Comparative worker profiles located the last kernel gap in the equal-input cell:
+`materializeIdentical` sat as a non-inlined call consuming 34.5% of the worker because `diff`'s
+large mapping body exhausted the inlining budget. The fast path now lives inline in a minimal
+dispatcher and the long path moved to a helper. Official anchored results: Node.js equal short
+text +50.1% (95.86M to 143.86M ops/s, parity with `fast-diff` at 144.82M), Bun +6.4% (121.38M,
+leading its cell); every other row stayed inside the drift floor on both runtimes. An isolated
+shape experiment had already shown our `{operation, value}` contract costs nothing versus tuple
+returns, so no contract change was needed. Raw data:
+[inline-fast-path-macos-arm64-node.json](inline-fast-path-macos-arm64-node.json),
+[inline-fast-path-macos-arm64-bun.json](inline-fast-path-macos-arm64-bun.json)
 
 Context for the real code gap: `fast-diff`'s lead there comes from diff-match-patch's half-match
 heuristic (verified: eight native `indexOf` searches fire during that diff), which is documented
