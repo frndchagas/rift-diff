@@ -235,6 +235,12 @@ const scenarios: readonly Scenario[] = [
     after: 'b'.repeat(300),
   },
   {
+    id: 'mid-distance-edits',
+    name: 'mid-distance clustered edits',
+    before: paragraph.repeat(40),
+    after: `${paragraph.repeat(12)}${'New words. '}${paragraph.repeat(14)}${'Also changed. '}${paragraph.repeat(14)}`,
+  },
+  {
     id: 'real-code',
     name: 'real code file edit',
     before: corpus.code.before,
