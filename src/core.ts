@@ -113,8 +113,11 @@ function diffStringRanges(
     ranges.push(createRange(EQUAL, 0, prefixLength, 0, prefixLength))
   }
 
-  if (
-    !appendStringContainmentRanges(
+  const contained =
+    beforeMiddleLength > 0 &&
+    afterMiddleLength > 0 &&
+    beforeMiddleLength !== afterMiddleLength &&
+    appendStringContainmentRanges(
       ranges,
       before,
       after,
@@ -123,7 +126,8 @@ function diffStringRanges(
       afterMiddleEnd,
       maxEditDistance,
     )
-  ) {
+
+  if (!contained) {
     if (beforeMiddleLength === 1 && afterMiddleLength === 1) {
       assertDistanceWithinLimit(2, maxEditDistance)
       ranges.push(
@@ -163,14 +167,6 @@ function appendStringContainmentRanges(
 ): boolean {
   const beforeMiddleLength = beforeMiddleEnd - middleStart
   const afterMiddleLength = afterMiddleEnd - middleStart
-
-  if (
-    beforeMiddleLength === 0 ||
-    afterMiddleLength === 0 ||
-    beforeMiddleLength === afterMiddleLength
-  ) {
-    return false
-  }
 
   if (beforeMiddleLength < afterMiddleLength) {
     const containedValue = before.substring(middleStart, beforeMiddleEnd)
