@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "label": "contiguous-trace-memory-stress",
+  "generatedAt": "2026-08-04T18:31:18.229Z",
+  "commit": "8384641a7f1ac7426a8d04f245df28b581102748",
+  "dirty": false,
+  "runtime": {
+    "name": "Node.js",
+    "version": "26.0.0"
+  },
+  "system": {
+    "platform": "darwin",
+    "release": "25.5.0",
+    "architecture": "arm64",
+    "cpu": "Apple M4 Max",
+    "logicalCpuCount": 14,
+    "totalMemoryBytes": 38654705664
+  },
+  "sampleCount": 5,
+  "controlPeakResidentByteSamples": [51281920, 51593216, 51625984, 51642368, 51675136],
+  "medianControlPeakResidentBytes": 51625984,
+  "scenarios": [
+    {
+      "id": "fully-different-300",
+      "name": "300 vs 300 code units",
+      "beforeLength": 300,
+      "afterLength": 300
+    },
+    {
+      "id": "fully-different-600",
+      "name": "600 vs 600 code units",
+      "beforeLength": 600,
+      "afterLength": 600
+    },
+    {
+      "id": "fully-different-1000",
+      "name": "1000 vs 1000 code units",
+      "beforeLength": 1000,
+      "afterLength": 1000
+    }
+  ],
+  "engines": [
+    {
+      "id": "rift-trace-reference",
+      "name": "Rift trace reference"
+    },
+    {
+      "id": "rift-adaptive",
+      "name": "rift-diff adaptive"
+    },
+    {
+      "id": "fast-diff",
+      "name": "fast-diff"
+    },
+    {
+      "id": "fast-myers-diff",
+      "name": "fast-myers-diff"
+    },
+    {
+      "id": "jsdiff",
+      "name": "jsdiff"
+    }
+  ],
+  "results": [
+    {
+      "engineId": "rift-adaptive",
+      "scenarioId": "fully-different-300",
+      "peakResidentByteSamples": [53084160, 53149696, 53428224, 53526528, 53690368],
+      "medianPeakResidentBytes": 53428224,
+      "incrementalPeakResidentBytes": 1802240
+    },
+    {
+      "engineId": "fast-diff",
+      "scenarioId": "fully-different-600",
+      "peakResidentByteSamples": [57032704, 57049088, 57098240, 57311232, 57393152],
+      "medianPeakResidentBytes": 57098240,
+      "incrementalPeakResidentBytes": 5472256
+    },
+    {
+      "engineId": "rift-trace-reference",
+      "scenarioId": "fully-different-600",
+      "peakResidentByteSamples": [69713920, 69763072, 69779456, 69828608, 69844992],
+      "medianPeakResidentBytes": 69779456,
+      "incrementalPeakResidentBytes": 18153472
+    },
+    {
+      "engineId": "jsdiff",
+      "scenarioId": "fully-different-1000",
+      "peakResidentByteSamples": [63291392, 63307776, 63356928, 63373312, 63373312],
+      "medianPeakResidentBytes": 63356928,
+      "incrementalPeakResidentBytes": 11730944
+    },
+    {
+      "engineId": "fast-diff",
+      "scenarioId": "fully-different-300",
+      "peakResidentByteSamples": [54231040, 54870016, 54951936, 54984704, 55017472],
+      "medianPeakResidentBytes": 54951936,
+      "incrementalPeakResidentBytes": 3325952
+    },
+    {
+      "engineId": "rift-trace-reference",
+      "scenarioId": "fully-different-300",
+      "peakResidentByteSamples": [58605568, 58703872, 58916864, 59310080, 59342848],
+      "medianPeakResidentBytes": 58916864,
+      "incrementalPeakResidentBytes": 7290880
+    },
+    {
+      "engineId": "fast-diff",
+      "scenarioId": "fully-different-1000",
+      "peakResidentByteSamples": [57163776, 57294848, 58703872, 59473920, 59670528],
+      "medianPeakResidentBytes": 58703872,
+      "incrementalPeakResidentBytes": 7077888
+    },
+    {
+      "engineId": "fast-myers-diff",
+      "scenarioId": "fully-different-600",
+      "peakResidentByteSamples": [57196544, 57229312, 57344000, 57409536, 57688064],
+      "medianPeakResidentBytes": 57344000,
+      "incrementalPeakResidentBytes": 5718016
+    },
+    {
+      "engineId": "jsdiff",
+      "scenarioId": "fully-different-600",
+      "peakResidentByteSamples": [62996480, 63029248, 63143936, 63209472, 63275008],
+      "medianPeakResidentBytes": 63143936,
+      "incrementalPeakResidentBytes": 11517952
+    },
+    {
+      "engineId": "rift-adaptive",
+      "scenarioId": "fully-different-600",
+      "peakResidentByteSamples": [55640064, 55771136, 55836672, 55951360, 55984128],
+      "medianPeakResidentBytes": 55836672,
+      "incrementalPeakResidentBytes": 4210688
+    },
+    {
+      "engineId": "rift-adaptive",
+      "scenarioId": "fully-different-1000",
+      "peakResidentByteSamples": [56033280, 56901632, 56934400, 57098240, 57163776],
+      "medianPeakResidentBytes": 56934400,
+      "incrementalPeakResidentBytes": 5308416
+    },
+    {
+      "engineId": "fast-myers-diff",
+      "scenarioId": "fully-different-1000",
+      "peakResidentByteSamples": [56999936, 57196544, 57196544, 57196544, 58638336],
+      "medianPeakResidentBytes": 57196544,
+      "incrementalPeakResidentBytes": 5570560
+    },
+    {
+      "engineId": "fast-myers-diff",
+      "scenarioId": "fully-different-300",
+      "peakResidentByteSamples": [55181312, 55181312, 55197696, 55623680, 55689216],
+      "medianPeakResidentBytes": 55197696,
+      "incrementalPeakResidentBytes": 3571712
+    },
+    {
+      "engineId": "rift-trace-reference",
+      "scenarioId": "fully-different-1000",
+      "peakResidentByteSamples": [89489408, 89505792, 89980928, 90046464, 90062848],
+      "medianPeakResidentBytes": 89980928,
+      "incrementalPeakResidentBytes": 38354944
+    },
+    {
+      "engineId": "jsdiff",
+      "scenarioId": "fully-different-300",
+      "peakResidentByteSamples": [58802176, 58834944, 58900480, 58933248, 58982400],
+      "medianPeakResidentBytes": 58900480,
+      "incrementalPeakResidentBytes": 7274496
+    }
+  ]
+}
