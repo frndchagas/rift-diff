@@ -71,3 +71,24 @@ Three exploratory measurements, not official evidence:
 - Instrumenting `String.prototype.indexOf` while running `fast-diff` on the real code fixture
   counted eight calls, confirming diff-match-patch's half-match stage as the source of its
   Node.js lead in that cell.
+
+## Element-equality variants on number arrays (`2386010` era)
+
+- Date: 2026-08-04, Node.js 26.0.0 and Bun 1.4.0, same machine as above
+
+Five closure variants scanning a 99-element equal run of small integers, one isolated process per
+variant, five order-alternated repetitions, medians of per-process medians:
+
+| Variant                           | Node.js 26 | Bun 1.4 |
+| --------------------------------- | ---------: | ------: |
+| strict `===`                      |      74 ns |   79 ns |
+| `Object.is` called directly       |     135 ns |   79 ns |
+| `Object.is` via captured variable |     133 ns |   79 ns |
+| SameValueZero closure             |     148 ns |   79 ns |
+| zero-checking inline `Object.is`  |     159 ns |   79 ns |
+
+A CPU profile of the number-token worker put 40.2% of self time in the equality closure, 31.2% in
+`findMyersSplit`, and 11.9% in the trace probe. The 1.8× V8 equality cost over roughly 40% of the
+scenario matches the observed 2× Node-versus-Bun throughput difference for identical code, so the
+number-token gap decomposes into the recorded `Object.is` contract cost on V8 plus the known
+probe-abort overhead for distances just above the probe limit.

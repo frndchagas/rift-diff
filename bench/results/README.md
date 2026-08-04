@@ -39,6 +39,14 @@ Milestone target: fastest or within 10% of the leader in every scenario. Remaini
 gaps: equal short text and real code file edit on Node.js; repetitive shifted text and real json
 config edit on Bun; array of number tokens on both runtimes.
 
+Context for the number-token gap: incumbents compare elements with `===`, which treats
+equal-position `NaN`s as edits; `rift-diff` defaults to `Object.is`, which V8 executes at about
+1.8× the cost of `===` while JavaScriptCore executes both identically — measured in
+[exploratory/](exploratory/README.md) and recorded as a contract decision in RFC 0001. That
+single difference accounts for the same engine running 2× faster on Bun than Node.js in this
+cell. Callers can pass `equals: (left, right) => left === right` to trade `NaN` correctness for
+V8 throughput.
+
 Context for the real code gap: `fast-diff`'s lead there comes from diff-match-patch's half-match
 heuristic (verified: eight native `indexOf` searches fire during that diff), which is documented
 as potentially non-optimal and happens to produce the minimal distance on this fixture.

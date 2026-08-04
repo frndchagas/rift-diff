@@ -71,6 +71,16 @@ shape `fast-myers-diff` uses — cost V8 little (+9% on fully different inputs) 
 JavaScriptCore dramatically (+127%), confirming that the two engines punish different kernel
 patterns and both runtimes must gate every acceptance.
 
+Element-equality cost on V8 is its own finding. Five isolated per-process variants over number
+arrays (Node.js 26 vs Bun 1.4): strict `===` 74 ns per 99-element scan on V8, `Object.is` (direct
+or through a captured variable — V8 inlines both identically) 133-135 ns, a SameValueZero closure
+148 ns, and a zero-checking inline form 159 ns; JavaScriptCore runs every variant at 79 ns. No
+JavaScript-authored NaN-aware comparison beats the `Object.is` builtin on V8, so a generic engine
+either pays about 1.8× on comparison scans or silently drops `NaN` correctness the way
+`===`-based incumbents do. `rift-diff` keeps `Object.is` as the recorded default (RFC 0001) with
+an explicit `equals` escape hatch, and this fully explains the number-token scenario running 2×
+faster on Bun than on Node.js with identical code.
+
 On the real code corpus scenario, `fast-diff`'s Node.js lead was traced to diff-match-patch's
 half-match stage, verified empirically: eight `String.prototype.indexOf` calls fire during that
 single diff, splitting the problem around a long common substring through the runtime's native

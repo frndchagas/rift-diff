@@ -46,6 +46,16 @@ Ranges must be non-empty, contiguous within their consumed input, and canonical:
 must never carry the same operation. Ignoring deletes and concatenating equal and inserted ranges
 must reproduce the target exactly.
 
+Default element equality for generic sequences is `Object.is`: `NaN` equals `NaN`, and `-0` is
+distinct from `0`. This is a recorded decision, not an accident. Isolated per-process
+measurements on V8 (Node.js 26) show `Object.is` costs about 1.8× a strict `===` scan, and every
+JavaScript-authored NaN-aware alternative measured slower than the builtin itself — including
+SameValueZero closures — while JavaScriptCore runs them all at `===` cost. Incumbent diff
+libraries compare with `===`, which silently treats equal-position `NaN`s as edits. `rift-diff`
+keeps the correct default and exposes the tradeoff instead: callers who prefer `===` semantics
+and its V8 throughput pass `equals: (left, right) => left === right` explicitly. Strings are
+unaffected; the string path compares UTF-16 code units.
+
 ## Planned execution pipeline
 
 ### 1. Affix trimming
