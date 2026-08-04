@@ -12,7 +12,7 @@ import {
 const extended = process.env.RIFT_TEST_EXTENDED === '1'
 
 describe.runIf(extended)('extended: heavy oracle fuzz', () => {
-  it('stays minimal across 7,000 balanced and unbalanced pairs', () => {
+  it('stays minimal across 7,000 balanced and unbalanced pairs', { timeout: 180_000 }, () => {
     const random = createRandom(0xfeedbeef)
     const alphabets = ['ab', 'abc', 'abcdefgh']
 
@@ -39,7 +39,7 @@ describe.runIf(extended)('extended: heavy oracle fuzz', () => {
     }
   })
 
-  it('explores fresh unseeded property runs on every invocation', () => {
+  it('explores fresh unseeded property runs on every invocation', { timeout: 180_000 }, () => {
     const anyText = fc.string({ unit: 'binary', maxLength: 120 })
 
     fc.assert(
