@@ -14,9 +14,17 @@ export function diff<Element, Slice>(
       validateMaxEditDistance(maxEditDistance)
     }
 
-    return materializeIdentical(before)
+    return before.length === 0 ? [] : [{ operation: EQUAL, value: before.slice(0, before.length) }]
   }
 
+  return materializeRanges(before, after, options)
+}
+
+function materializeRanges<Element, Slice>(
+  before: Sliceable<Element, Slice>,
+  after: Sliceable<Element, Slice>,
+  options: DiffOptions<Element> | undefined,
+): DiffChunk<Slice>[] {
   return diffRanges(before, after, options).map((range) => {
     if (range.operation === INSERT) {
       return {
@@ -30,10 +38,4 @@ export function diff<Element, Slice>(
       value: before.slice(range.beforeStart, range.beforeEnd),
     }
   })
-}
-
-function materializeIdentical<Element, Slice>(
-  value: Sliceable<Element, Slice>,
-): DiffChunk<Slice>[] {
-  return value.length === 0 ? [] : [{ operation: EQUAL, value: value.slice(0, value.length) }]
 }
