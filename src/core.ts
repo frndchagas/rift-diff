@@ -39,20 +39,25 @@ const TRACE_SUBPROBLEM_SIZE = 32
 export function diffRanges<Element>(
   before: Indexable<Element>,
   after: Indexable<Element>,
-  options: DiffOptions<Element> = {},
+  options?: DiffOptions<Element>,
 ): DiffRange[] {
-  validateMaxEditDistance(options.maxEditDistance)
+  const equalsOption = options?.equals
+  const maxEditDistance = options?.maxEditDistance
+
+  if (maxEditDistance !== undefined) {
+    validateMaxEditDistance(maxEditDistance)
+  }
 
   // Identity only proves equality under the default reflexive comparison.
-  if (before.length === after.length && before === after && options.equals === undefined) {
+  if (before.length === after.length && before === after && equalsOption === undefined) {
     return before.length === 0 ? [] : [createRange(EQUAL, 0, before.length, 0, after.length)]
   }
 
-  if (typeof before === 'string' && typeof after === 'string' && options.equals === undefined) {
-    return diffStringRanges(before, after, options.maxEditDistance)
+  if (typeof before === 'string' && typeof after === 'string' && equalsOption === undefined) {
+    return diffStringRanges(before, after, maxEditDistance)
   }
 
-  const equals = options.equals ?? Object.is
+  const equals = equalsOption ?? Object.is
   const prefixLength = findCommonPrefix(before, after, equals)
   const suffixLength = findCommonSuffix(before, after, prefixLength, equals)
   const beforeMiddleEnd = before.length - suffixLength
@@ -70,7 +75,7 @@ export function diffRanges<Element>(
       beforeMiddleEnd,
       prefixLength,
       afterMiddleEnd,
-      options.maxEditDistance,
+      maxEditDistance,
     )
   ) {
     const equalsAt: IndexEquality = (beforeIndex, afterIndex) =>
@@ -83,7 +88,7 @@ export function diffRanges<Element>(
         prefixLength,
         afterMiddleEnd,
         equalsAt,
-        options.maxEditDistance,
+        maxEditDistance,
       ),
     )
   }
