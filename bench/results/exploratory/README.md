@@ -179,3 +179,62 @@ workspaces are already caller-owned and persist across calls, so resumption capt
 The near-miss is the more useful record: a variant that can be constant-folded is not a baseline,
 and the same anchoring discipline the benchmark harness already enforces applies to throwaway
 microbenchmarks.
+
+## Affix trim extraction, and an A/A control that priced the instrument (`ef7df90` era)
+
+- Date: 2026-08-05, Node.js 26.0.0 and Bun 1.4.0, same machine as above
+
+RFC 0002 requires the linear driver's two affix trim loops to leave the function body before it
+becomes a generator. Question: is that extraction free?
+
+Two bundles from the same `bench/benchmark.ts`, each built in its own worktree so `src/core.ts`
+resolves to its own version; nothing else in `src/` differed. Six order-alternated repetitions per
+cell, one isolated worker process per repetition, standard profile. Positive means the extracted
+version is faster.
+
+| Cell                            | Node.js 26 | Bun 1.4 |
+| ------------------------------- | ---------: | ------: |
+| `rift-ranges` equal-short       |      -0.8% |   +0.3% |
+| `rift-materialized` equal-short |      -1.2% |   +1.2% |
+| fully different                 |      +0.5% |   -2.6% |
+| repetitive shift                |      -0.2% |   +1.1% |
+| dispersed edits                 |      +0.1% |   +0.8% |
+| real code                       |      +0.6% |   +1.1% |
+| real json                       |      +1.6% |   +0.4% |
+| real prose                      |      +0.6% |   +1.4% |
+
+Two methodology notes are worth more than the table.
+
+First, **an odd repetition count silently unbalances the order alternation.** A first run used five
+repetitions, so the base side ran first in three of them and the head side in two. Every cell came
+out negative, between -0.1% and -1.6%. Rerunning with six repetitions moved the linear-engine cells
+to a mean of about +0.5% without any code change. Interleaving only cancels order effects when the
+count is even.
+
+Second, **the same bundle measured against a copy of itself does not return zero.** An A/A control
+with byte-identical bundles on both sides measured -0.3% and +0.7% on the two equal-short lanes,
++1.6% on real json, and +1.2% on repetitive shift. That +1.6% is precisely the largest "gain" the
+A/B reported. Every delta in the table above therefore sits inside the instrument's own noise, and
+the extraction is neutral on both runtimes. An A/A control costs one extra run and converts an
+argument about small percentages into a measurement; it belongs in any comparison where the
+expected effect is near the drift floor.
+
+The `equal-short` cells double as a negative control here: the identity fast path executes no
+changed line, so a consistent reading there measures the harness, not the change.
+
+### The linear driver's prefix trim never fires
+
+Instrumenting the extracted helpers and running 20,000 random pairs recorded 19,857 linear-driver
+calls and 202,321 suffix-trim hits against **zero** prefix-trim hits. The mutation report agrees
+from the other side: the prefix branch carries four uncovered mutants, the same four it carried
+before the extraction, while the suffix branch is fully covered.
+
+That is structural, not a corpus artifact. The first work item arrives with the common prefix
+already removed by the caller. Every later item comes from a split, and `findMyersSplit` returns
+the point just past a maximal snake — so the right subproblem opens on a mismatch, and the left
+subproblem inherits a start the parent already trimmed. A common prefix cannot survive into either.
+
+The trim is therefore one comparison that always fails, per work item. Removing it is a candidate
+iteration of its own, not a rider on this one: the correction recorded above under `ffedba9` is
+exactly the case of provably wasted work that turned out not to sit on any measurable critical
+path, and this one costs O(1) per item rather than O(n).
