@@ -104,8 +104,10 @@ Lowering the trace probe's distance limit from 32 to 20 measured +7.0% (Node.js)
 on real json and stayed inside the drift floor everywhere else, including the wide-middle guard
 built specifically to expose its risk (-0.1% Node.js, -2.4% Bun). The change was **not** adopted:
 a 7% gain on a single cell against consistently small negatives on Bun is not a clear win, and the
-same cell gains about 104% from skipping the probe entirely at distance 94. The value lies in not
-wasting the probe's work, not in retuning its constant.
+same cell gains about 104% from skipping the probe entirely at distance 94. The claim that the same cell gains about 104% from skipping the probe entirely came from a
+measurement with a 33.2% spread and did not survive a controlled test: an exact probe skip, taken
+whenever the length difference already exceeds the probe's limit, measured inside the drift floor
+on every scenario and was reverted. Details in [exploratory/](exploratory/README.md).
 
 The previously recorded idea of seeding the linear engine with the probe's forward frontier is
 unsound as stated: the bidirectional middle snake needs forward and reverse advancing in lockstep,

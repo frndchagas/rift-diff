@@ -113,12 +113,34 @@ crashes the current Bun canary with a segfault after worker completion.
 - Date: 2026-08-04, Node.js 26.0.0 and Bun 1.4.0, same machine as above
 
 Dedicated nine-repetition Bun measurement of real-json confirmed its gap as real (rift 22.2k,
-`fast-myers-diff` 28.8k, spreads under 6%) and measured the probe-free variant
-(`TRACE_DISTANCE_LIMIT = 0`) at 45.2k — double the current cell and 1.57× ahead of the leader,
-because at distance 94 the probe burns its full 33 layers at JavaScriptCore's ~2 ns/char floor
-before the linear engine starts over. A probe limit of 20 measured +0.9% to +7.8% across
+`fast-myers-diff` 28.8k, spreads under 6%). The same run measured the probe-free variant
+(`TRACE_DISTANCE_LIMIT = 0`) at 45.2k, apparently double the cell — **but that figure carried a
+33.2% spread and should never have been treated as established.** It was, and it drove a later
+iteration. See the correction below. A probe limit of 20 measured +0.9% to +7.8% across
 repetitive, dispersed, mid-distance, and real-json on both runtimes with no losses. The limit
 change is deferred until the matrix contains a large-middle scenario inside the 21-32 band, which
 is exactly the case a lower limit would push onto the linear engine. Reusing the probe's final
 forward frontier to seed the first bidirectional split is recorded as the structural direction
 that would capture the full probe-free gain without sacrificing small-distance scenarios.
+
+## Correction: probe waste is not where the real-json gap lives (`ffedba9` era)
+
+- Date: 2026-08-05, Node.js 26.0.0 and Bun 1.4.0, same machine as above
+
+The 45.2k probe-free figure above has a 33.2% spread, and the conclusion drawn from it does not
+survive a controlled test. A length difference is a lower bound on edit distance, so a delta past
+the probe's distance limit proves the probe would scan every layer and then give up: an exact
+route decision with no effect on output. That skip fires on four of the corpus scenarios
+(real-code, real-json, real-log, real-prose, deltas 68 to 497) and leaves the probe-favoring
+scenarios untouched (dispersed and repetitive both have a zero delta).
+
+Interleaved A/B across eight scenarios on both runtimes measured every cell inside the drift
+floor, real-json included at -0.4% on Node.js and +0.2% on Bun. A purpose-built large unbalanced
+input measured 0.1% and 0.9%, and inspecting it showed why the design was wrong: with the
+insertion at one end, affix trimming consumes almost everything and the probe never runs over a
+large span at all.
+
+The change was reverted. Eliminating provably wasted work sounds free, but the work being
+eliminated was not on the critical path of any scenario we can construct. The lesson is the
+measurement discipline the rest of this file already states: a figure with a 33% spread is not a
+result, and it should have been re-measured before anything was built on it.
