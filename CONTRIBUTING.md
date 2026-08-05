@@ -57,6 +57,19 @@ until a test reproduces it, and the mutation score must not decline. Surviving m
 lines — comparison direction, bounds arithmetic, range emission — are test gaps to close, not
 noise to suppress.
 
+## Releasing
+
+Releases publish from CI through npm trusted publishing, so no token exists anywhere: not on a
+laptop, not in repository secrets. The workflow authenticates with a short-lived OIDC identity that
+npm accepts because it trusts this repository and workflow file.
+
+1. Update the version in `package.json` and close the section in `CHANGELOG.md`.
+2. Commit, then tag: `git tag -a vX.Y.Z -m "rift-diff X.Y.Z"`.
+3. `git push origin main && git push origin vX.Y.Z`.
+
+The workflow refuses to publish when the tag disagrees with `package.json`, then runs the full
+gauntlet and the build before publishing. A failing test means nothing is published.
+
 ## Style
 
 - Conventional Commits.
