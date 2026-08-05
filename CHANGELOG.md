@@ -4,9 +4,9 @@ All notable changes to this project are documented here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-08-05
 
-Pre-1.0 and unpublished: the public API may still change without a major version bump.
+First published release. Pre-1.0: the public API may still change without a major version bump.
 
 ### Added
 
@@ -44,9 +44,26 @@ Measured against the anchored baseline on Apple M4 Max; full tables in
 - Adversarial memory no longer grows with retained trace: up to 86% less incremental RSS than the
   retained-trace reference at 1,000 units.
 
+### Fixed before release
+
+A full review before publishing found two correctness defects that the existing suite missed, both
+now fixed and covered by regression tests:
+
+- `maxEditDistance` disabled the linear-space guards, so the option that bounds work was the one
+  that exhausted memory: 699 MB for two 4,000-character strings against 13 MB without it, now 1 MB.
+- `diff` materialized equal chunks from the source, so a custom `equals` coarser than identity
+  silently dropped the target's content — the readme's own example reverted a rename. Equal chunks
+  now carry the target's values.
+
+Also fixed: `apply` crashed above roughly 125,000 array elements; option validation was skipped on
+the identity fast path; `snapToCodePoints` was ignored whenever `equals` was set; and the time
+budget was not enforced during affix trimming.
+
 ### Decisions
 
 - Element equality defaults to `Object.is`, keeping `NaN` correctness at a measured V8 cost, with
   `equals` as the explicit escape hatch (RFC 0001).
 - Minimality is never traded for speed in the default mode; a `readable` non-minimal mode remains
   a possible post-1.0 addition.
+
+[0.1.0]: https://github.com/frndchagas/rift-diff/releases/tag/v0.1.0

@@ -1,13 +1,20 @@
 {
   "name": "rift-diff",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A zero-dependency, TypeScript-first diff engine built around ranges and predictable resource limits.",
   "keywords": [
+    "array-diff",
     "diff",
+    "difference",
     "edit-distance",
     "myers",
+    "myers-diff",
+    "patch",
+    "string-diff",
     "text",
-    "typescript"
+    "typescript",
+    "unicode",
+    "zero-dependency"
   ],
   "homepage": "https://github.com/frndchagas/rift-diff#readme",
   "bugs": {
@@ -29,15 +36,21 @@
   "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.cjs"
-    }
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build": "bun run clean && bun run build:types && bun run build:esm && bun run build:cjs && bun run test:package",
-    "build:cjs": "bun build ./build/entry.ts --outdir ./dist/cjs --target node --format cjs --minify --sourcemap=external --entry-naming='index.cjs'",
-    "build:esm": "bun build ./build/entry.ts --outdir ./dist/esm --target node --format esm --minify --sourcemap=external --entry-naming='index.js'",
+    "build:cjs": "bun build ./build/entry.ts --outdir ./dist/cjs --target node --format cjs --minify --sourcemap=linked --entry-naming='index.cjs' && node ./scripts/emit-cjs-types.mjs",
+    "build:esm": "bun build ./build/entry.ts --outdir ./dist/esm --target node --format esm --minify --sourcemap=linked --entry-naming='index.js'",
     "build:types": "tsc -p tsconfig.build.json",
     "clean": "rm -rf ./dist",
     "test": "vitest run",

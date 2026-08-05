@@ -3,8 +3,8 @@
 A zero-runtime-dependency, TypeScript-first diff engine built around ranges, guaranteed minimal
 output, and reproducible performance.
 
-> Pre-1.0: the public API may still change, and the package has not been published to npm yet.
-> The engine itself is correct, benchmarked, and covered by a layered test gauntlet.
+> Pre-1.0: the public API may still change without a major version bump. The engine is correct,
+> benchmarked, and covered by a layered test gauntlet.
 
 ## What makes it different
 
@@ -71,6 +71,10 @@ libraries.
 [#149]: https://github.com/google/diff-match-patch/issues/149
 [#68]: https://github.com/google/diff-match-patch/issues/68
 [#51]: https://github.com/google/diff-match-patch/issues/51
+
+```bash
+npm install rift-diff
+```
 
 ## Usage
 
