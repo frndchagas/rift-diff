@@ -916,8 +916,6 @@ function* calculateLinearSpaceMyersRanges(
     let split: MyersSplit | undefined
     let firstLayer = 0
 
-    initializeMyersWorkspaces(forwardWorkspace, reverseWorkspace, maximumDistance)
-
     for (;;) {
       const lastLayer =
         layerLimit === UNLIMITED_LAYERS
@@ -1068,6 +1066,13 @@ function findMyersSplit(
     throw new Error('Myers bisect workspace is smaller than the frontier it must hold')
   }
 
+  if (firstLayer === 0) {
+    forward.fill(-1, 0, vectorLength)
+    reverse.fill(-1, 0, vectorLength)
+    forward[offset + 1] = 0
+    reverse[offset + 1] = 0
+  }
+
   for (let distance = startLayer; distance < endLayer; distance += 1) {
     if (distance > splitDistanceLimit && maxEditDistance !== undefined) {
       throw new DiffLimitError(maxEditDistance)
@@ -1159,20 +1164,6 @@ function findMyersSplit(
   }
 
   return undefined
-}
-
-function initializeMyersWorkspaces(
-  forward: Int32Array,
-  reverse: Int32Array,
-  maximumDistance: number,
-): void {
-  const offset = maximumDistance + 1
-  const vectorLength = 2 * maximumDistance + 3
-
-  forward.fill(-1, 0, vectorLength)
-  reverse.fill(-1, 0, vectorLength)
-  forward[offset + 1] = 0
-  reverse[offset + 1] = 0
 }
 
 function appendSingleElementRanges(
