@@ -5,5 +5,13 @@
     "suspicious": "error",
     "perf": "warn"
   },
-  "ignorePatterns": ["dist/**", "coverage/**"]
+  "ignorePatterns": ["dist/**", "coverage/**"],
+  "overrides": [
+    {
+      "files": ["**/*.test.ts"],
+      "rules": {
+        "no-await-in-loop": "off"
+      }
+    }
+  ]
 }

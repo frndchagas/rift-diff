@@ -1,7 +1,7 @@
-import { DiffLimitError, DiffTimeoutError } from './errors.js'
+import { DiffAbortError, DiffLimitError, DiffTimeoutError } from './errors.js'
 import { snapRangesToCodePoints } from './snap.js'
 import { DELETE, EQUAL, INSERT } from './types.js'
-import type { DiffOperation, DiffOptions, DiffRange, Indexable } from './types.js'
+import type { AsyncDiffOptions, DiffOperation, DiffOptions, DiffRange, Indexable } from './types.js'
 
 interface MutableDiffRange {
   operation: DiffOperation
@@ -59,6 +59,19 @@ function assertWithinBudget(budget: TimeBudget | undefined): void {
 
 const TRACE_DISTANCE_LIMIT = 32
 const TRACE_SUBPROBLEM_SIZE = 32
+const DEFAULT_SLICE_MILLISECONDS = 8
+const ASYNC_LAYER_LIMIT = 16
+
+const scheduleNextSlice: () => Promise<void> =
+  typeof setImmediate === 'function'
+    ? () =>
+        new Promise<void>((resolve) => {
+          setImmediate(resolve)
+        })
+    : () =>
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 0)
+        })
 
 /**
  * Computes a minimal edit script as ranges over the inputs, copying nothing.
@@ -155,6 +168,106 @@ export function diffRanges<Element>(
   }
 
   return ranges
+}
+
+/**
+ * Computes the same minimal edit script as {@link diffRanges}, yielding the event loop between
+ * slices so a long diff neither blocks the loop nor ignores cancellation.
+ *
+ * The result is identical to `diffRanges` for the same inputs and options; only the scheduling
+ * differs. Short inputs still resolve without ever suspending, and identical inputs take the same
+ * fast path the synchronous API takes.
+ *
+ * On abort the promise rejects with {@link DiffAbortError} and partial work is discarded, because
+ * a partial script does not reconstruct the target and passing one to `apply` would corrupt data.
+ *
+ * @throws {DiffLimitError} when `options.maxEditDistance` is smaller than the true minimum.
+ * @throws {DiffTimeoutError} when `options.timeBudgetMilliseconds` elapses.
+ * @throws {DiffAbortError} when `options.signal` aborts.
+ * @throws {RangeError} when an option is outside its documented domain.
+ */
+export async function diffRangesAsync<Element>(
+  before: Indexable<Element>,
+  after: Indexable<Element>,
+  options?: AsyncDiffOptions<Element>,
+): Promise<DiffRange[]> {
+  const equalsOption = options?.equals
+  const maxEditDistance = options?.maxEditDistance
+  const timeBudgetMilliseconds = options?.timeBudgetMilliseconds
+  const sliceMilliseconds = options?.sliceMilliseconds ?? DEFAULT_SLICE_MILLISECONDS
+  const signal = options?.signal
+
+  if (maxEditDistance !== undefined) {
+    validateMaxEditDistance(maxEditDistance)
+  }
+
+  validateSliceMilliseconds(sliceMilliseconds)
+
+  throwIfAborted(signal)
+
+  const budget =
+    timeBudgetMilliseconds === undefined ? undefined : createTimeBudget(timeBudgetMilliseconds)
+
+  // Identity only proves equality under the default reflexive comparison.
+  if (before.length === after.length && before === after && equalsOption === undefined) {
+    return before.length === 0 ? [] : [createRange(EQUAL, 0, before.length, 0, after.length)]
+  }
+
+  let sliceDeadline = performance.now() + sliceMilliseconds
+  const slice: SliceController = {
+    layerLimit: ASYNC_LAYER_LIMIT,
+    expired: () => performance.now() >= sliceDeadline,
+  }
+
+  const generator =
+    typeof before === 'string' && typeof after === 'string' && equalsOption === undefined
+      ? diffStringRangesGenerator(before, after, maxEditDistance, budget, slice)
+      : diffGenericRangesGenerator(
+          before,
+          after,
+          equalsOption ?? Object.is,
+          maxEditDistance,
+          budget,
+          slice,
+        )
+
+  for (;;) {
+    const step = generator.next()
+
+    if (step.done) {
+      return options?.snapToCodePoints === true &&
+        typeof before === 'string' &&
+        typeof after === 'string'
+        ? snapRangesToCodePoints(before, after, step.value)
+        : step.value
+    }
+
+    // oxlint-disable-next-line no-await-in-loop -- cooperative slices are sequential by design
+    await scheduleNextSlice()
+
+    if (isAborted(signal)) {
+      generator.return([])
+      throw new DiffAbortError()
+    }
+
+    sliceDeadline = performance.now() + sliceMilliseconds
+  }
+}
+
+function isAborted(signal: AbortSignal | undefined): boolean {
+  return signal !== undefined && signal.aborted
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (isAborted(signal)) {
+    throw new DiffAbortError()
+  }
+}
+
+function validateSliceMilliseconds(milliseconds: number): void {
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
+    throw new RangeError('sliceMilliseconds must be a positive finite number')
+  }
 }
 
 export function validateTimeBudget(milliseconds: number): void {
@@ -271,6 +384,137 @@ function diffStringRanges(
   return ranges
 }
 
+function* diffStringRangesGenerator(
+  before: string,
+  after: string,
+  maxEditDistance: number | undefined,
+  budget: TimeBudget | undefined,
+  slice: SliceController,
+): RangeGenerator {
+  const prefixLength = findCommonStringPrefix(before, after)
+  const suffixLength = findCommonStringSuffix(before, after, prefixLength)
+  const beforeMiddleEnd = before.length - suffixLength
+  const afterMiddleEnd = after.length - suffixLength
+  const beforeMiddleLength = beforeMiddleEnd - prefixLength
+  const afterMiddleLength = afterMiddleEnd - prefixLength
+  const ranges: MutableDiffRange[] = []
+
+  if (prefixLength > 0) {
+    ranges.push(createRange(EQUAL, 0, prefixLength, 0, prefixLength))
+  }
+
+  const contained =
+    beforeMiddleLength > 0 &&
+    afterMiddleLength > 0 &&
+    beforeMiddleLength !== afterMiddleLength &&
+    appendStringContainmentRanges(
+      ranges,
+      before,
+      after,
+      prefixLength,
+      beforeMiddleEnd,
+      afterMiddleEnd,
+      maxEditDistance,
+    )
+
+  if (!contained) {
+    if (beforeMiddleLength === 1 && afterMiddleLength === 1) {
+      assertDistanceWithinLimit(2, maxEditDistance)
+      ranges.push(
+        createRange(DELETE, prefixLength, beforeMiddleEnd, prefixLength, prefixLength),
+        createRange(INSERT, beforeMiddleEnd, beforeMiddleEnd, prefixLength, afterMiddleEnd),
+      )
+    } else if (
+      !appendTrivialMiddleRanges(
+        ranges,
+        prefixLength,
+        beforeMiddleEnd,
+        prefixLength,
+        afterMiddleEnd,
+        maxEditDistance,
+      )
+    ) {
+      const equalsAt: IndexEquality = (beforeIndex, afterIndex) =>
+        before.charCodeAt(beforeIndex) === after.charCodeAt(afterIndex)
+
+      const middleRanges = yield* calculateMyersRangesGenerator(
+        prefixLength,
+        beforeMiddleEnd,
+        prefixLength,
+        afterMiddleEnd,
+        equalsAt,
+        maxEditDistance,
+        budget,
+        slice,
+      )
+
+      for (const range of middleRanges) {
+        ranges.push(range)
+      }
+    }
+  }
+
+  if (suffixLength > 0) {
+    ranges.push(createRange(EQUAL, beforeMiddleEnd, before.length, afterMiddleEnd, after.length))
+  }
+
+  return ranges
+}
+
+function* diffGenericRangesGenerator<Element>(
+  before: Indexable<Element>,
+  after: Indexable<Element>,
+  equals: (before: Element, after: Element) => boolean,
+  maxEditDistance: number | undefined,
+  budget: TimeBudget | undefined,
+  slice: SliceController,
+): RangeGenerator {
+  const prefixLength = findCommonPrefix(before, after, equals, budget)
+  const suffixLength = findCommonSuffix(before, after, prefixLength, equals, budget)
+  const beforeMiddleEnd = before.length - suffixLength
+  const afterMiddleEnd = after.length - suffixLength
+  const ranges: MutableDiffRange[] = []
+
+  if (prefixLength > 0) {
+    ranges.push(createRange(EQUAL, 0, prefixLength, 0, prefixLength))
+  }
+
+  if (
+    !appendTrivialMiddleRanges(
+      ranges,
+      prefixLength,
+      beforeMiddleEnd,
+      prefixLength,
+      afterMiddleEnd,
+      maxEditDistance,
+    )
+  ) {
+    const equalsAt: IndexEquality = (beforeIndex, afterIndex) =>
+      equals(before[beforeIndex]!, after[afterIndex]!)
+
+    const middleRanges = yield* calculateMyersRangesGenerator(
+      prefixLength,
+      beforeMiddleEnd,
+      prefixLength,
+      afterMiddleEnd,
+      equalsAt,
+      maxEditDistance,
+      budget,
+      slice,
+    )
+
+    for (const range of middleRanges) {
+      ranges.push(range)
+    }
+  }
+
+  if (suffixLength > 0) {
+    ranges.push(createRange(EQUAL, beforeMiddleEnd, before.length, afterMiddleEnd, after.length))
+  }
+
+  return ranges
+}
+
 function appendStringContainmentRanges(
   ranges: MutableDiffRange[],
   before: string,
@@ -339,12 +583,7 @@ function calculateMyersRanges(
   maxEditDistance: number | undefined,
   budget: TimeBudget | undefined,
 ): MutableDiffRange[] {
-  if (
-    maxEditDistance !== undefined &&
-    Math.abs(beforeEnd - beforeStart - (afterEnd - afterStart)) > maxEditDistance
-  ) {
-    throw new DiffLimitError(maxEditDistance)
-  }
+  assertMyersLengthWithinLimit(beforeEnd - beforeStart, afterEnd - afterStart, maxEditDistance)
 
   const tracedRanges = calculateTraceMyersRanges(
     beforeStart,
@@ -374,20 +613,82 @@ function calculateMyersRanges(
     ),
   )
 
-  if (maxEditDistance !== undefined) {
-    let distance = 0
+  assertScriptDistanceWithinLimit(linearRanges, maxEditDistance)
 
-    for (const range of linearRanges) {
-      distance +=
-        range.operation === DELETE
-          ? range.beforeEnd - range.beforeStart
-          : range.operation === INSERT
-            ? range.afterEnd - range.afterStart
-            : 0
-    }
+  return linearRanges
+}
 
-    assertDistanceWithinLimit(distance, maxEditDistance)
+function assertScriptDistanceWithinLimit(
+  ranges: readonly MutableDiffRange[],
+  maxEditDistance: number | undefined,
+): void {
+  if (maxEditDistance === undefined) {
+    return
   }
+
+  let distance = 0
+
+  for (const range of ranges) {
+    distance +=
+      range.operation === DELETE
+        ? range.beforeEnd - range.beforeStart
+        : range.operation === INSERT
+          ? range.afterEnd - range.afterStart
+          : 0
+  }
+
+  assertDistanceWithinLimit(distance, maxEditDistance)
+}
+
+function assertMyersLengthWithinLimit(
+  beforeLength: number,
+  afterLength: number,
+  maxEditDistance: number | undefined,
+): void {
+  if (maxEditDistance !== undefined && Math.abs(beforeLength - afterLength) > maxEditDistance) {
+    throw new DiffLimitError(maxEditDistance)
+  }
+}
+
+function* calculateMyersRangesGenerator(
+  beforeStart: number,
+  beforeEnd: number,
+  afterStart: number,
+  afterEnd: number,
+  equalsAt: IndexEquality,
+  maxEditDistance: number | undefined,
+  budget: TimeBudget | undefined,
+  slice: SliceController,
+): RangeGenerator {
+  assertMyersLengthWithinLimit(beforeEnd - beforeStart, afterEnd - afterStart, maxEditDistance)
+
+  const tracedRanges = calculateTraceMyersRanges(
+    beforeStart,
+    beforeEnd,
+    afterStart,
+    afterEnd,
+    equalsAt,
+    maxEditDistance,
+    TRACE_DISTANCE_LIMIT,
+    budget,
+  )
+
+  if (tracedRanges) {
+    return tracedRanges
+  }
+
+  const linearRanges = yield* calculateLinearSpaceMyersRanges(
+    beforeStart,
+    beforeEnd,
+    afterStart,
+    afterEnd,
+    equalsAt,
+    maxEditDistance,
+    budget,
+    slice,
+  )
+
+  assertScriptDistanceWithinLimit(linearRanges, maxEditDistance)
 
   return linearRanges
 }

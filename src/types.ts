@@ -52,6 +52,21 @@ export interface DiffOptions<Element> {
   snapToCodePoints?: boolean | undefined
 }
 
+export interface AsyncDiffOptions<Element> extends DiffOptions<Element> {
+  /**
+   * Cancels the diff. Checked at slice boundaries, so the call rejects with {@link DiffAbortError}
+   * within roughly one slice rather than at the end of the search. Partial work is discarded: a
+   * partial script does not reconstruct the target.
+   */
+  signal?: AbortSignal | undefined
+  /**
+   * How long the engine may hold the event loop before yielding, in milliseconds. Defaults to 8,
+   * which sits under a 60 Hz frame. Lower values shorten the gaps between frames and cancellation
+   * latency; higher values reduce scheduling overhead. Must be a positive finite number.
+   */
+  sliceMilliseconds?: number | undefined
+}
+
 /**
  * A half-open range over the inputs, returned by `diffRanges`. `EQUAL` consumes both inputs,
  * `DELETE` only the before input, `INSERT` only the after input; the unused side is an empty
