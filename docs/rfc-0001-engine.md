@@ -131,6 +131,20 @@ two Node.js cells documented contract exceptions rather than gaps to close:
 An explicit non-minimal `readable` mode stays a possible post-1.0 addition, not a milestone
 requirement. Both exceptions carry committed raw evidence in `bench/results/`.
 
+## Code point boundaries
+
+The default contract indexes UTF-16 code units, which is what makes positions cheap and
+unambiguous, and it lets a boundary fall inside an astral character. Concatenation still
+reconstructs the target, so the reconstruction invariant holds, but an individual range can be a
+lone surrogate that throws once re-encoded.
+
+`snapToCodePoints` resolves this without changing the default: it moves surrogate halves out of
+equal ranges into the neighboring delete and insert ranges. The result is minimal among scripts
+whose boundaries respect code points, which can exceed the unconstrained minimum by one deletion
+and one insertion per affected boundary. Because that is a real change to the distance, it is
+opt-in and reported here rather than applied silently — the same reasoning that keeps heuristic
+splitting out of the default mode.
+
 ## Companion operations
 
 `apply` and `invert` complete the round trip: a diff that cannot be applied or reversed is half a

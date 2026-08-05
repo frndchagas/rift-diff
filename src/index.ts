@@ -2,6 +2,7 @@ export { apply, invert, invertRanges } from './apply.js'
 export { diffRanges } from './core.js'
 export { diff } from './diff.js'
 export { DiffLimitError, DiffTimeoutError } from './errors.js'
+export { snapRangesToCodePoints } from './snap.js'
 export { splitLines, splitWords } from './tokens.js'
 export { DELETE, EQUAL, INSERT } from './types.js'
 export type {

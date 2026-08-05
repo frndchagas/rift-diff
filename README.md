@@ -34,6 +34,10 @@ libraries.
   original exactly, and `splitWords` is Unicode-aware and keeps whitespace as its own tokens.
   Elsewhere this is a wiki recipe people re-ask for (diff-match-patch [#82], [#126]) or a tokenizer
   with recurring quality complaints (jsdiff [#553], [#29], [#414]).
+- **Astral characters stay whole, on request.** `snapToCodePoints` keeps range boundaries off the
+  middle of a surrogate pair, so every chunk is valid text on its own instead of only after
+  concatenation. The equivalent bugs are open and unfixed in a dead repository, one filed by a
+  Google i18n engineer (diff-match-patch [#10], [#59], [#149], [#68]).
 - **A time budget that reports.** `timeBudgetMilliseconds` throws `DiffTimeoutError` when the
   engine is still searching. The one library asked for this closed the request unimplemented
   (fast-myers-diff [#18]) and the one that has a timeout degrades silently (diff-match-patch
@@ -42,7 +46,7 @@ libraries.
   CVE-shaped bugs live in this ecosystem (ReDoS, quadratic blowups). Not shipping one removes the
   entire class.
 - Zero runtime dependencies, no native code, no WASM, no install scripts. TypeScript-native and
-  genuinely tree-shakeable: 3.0 KB gzipped importing only `diff`, 3.5 KB for the whole surface.
+  genuinely tree-shakeable: 3.0 KB gzipped importing only `diff`, 3.8 KB for the whole surface.
 
 [#79]: https://github.com/kpdecker/jsdiff/issues/79
 [#353]: https://github.com/kpdecker/jsdiff/issues/353
@@ -62,6 +66,10 @@ libraries.
 [#553]: https://github.com/kpdecker/jsdiff/issues/553
 [#29]: https://github.com/kpdecker/jsdiff/issues/29
 [#414]: https://github.com/kpdecker/jsdiff/issues/414
+[#10]: https://github.com/google/diff-match-patch/issues/10
+[#59]: https://github.com/google/diff-match-patch/issues/59
+[#149]: https://github.com/google/diff-match-patch/issues/149
+[#68]: https://github.com/google/diff-match-patch/issues/68
 [#51]: https://github.com/google/diff-match-patch/issues/51
 
 ## Usage
@@ -134,9 +142,11 @@ for all sixteen scenarios, both runtimes, memory, and Ubuntu x86-64 live in
 
 ## Known limits
 
-- Positions are UTF-16 code units. A range boundary can therefore fall between the halves of a
-  surrogate pair when an edit lands mid-character. To diff by code point or by grapheme, tokenize
-  first and use the array API: `diff([...before], [...after])`, or `Intl.Segmenter` for graphemes.
+- Positions are UTF-16 code units. By default a boundary can fall between the halves of a
+  surrogate pair — concatenation still reconstructs the target, but an individual chunk can be
+  invalid text. Pass `snapToCodePoints: true` to prevent it, at a cost of up to one deletion and
+  one insertion per affected boundary. Grapheme clusters are a separate question: tokenize with
+  `Intl.Segmenter` and use the array API.
 - `timeBudgetMilliseconds` is checked at coarse intervals, so the stop can overshoot slightly. It
   bounds a synchronous call; an `AbortSignal` cannot, because nothing can set it while synchronous
   work runs. Cooperative asynchronous diffing with real cancellation is specified in RFC 0001 and

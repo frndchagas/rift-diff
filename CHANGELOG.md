@@ -28,6 +28,8 @@ Pre-1.0 and unpublished: the public API may still change without a major version
   and whitespace-preserving, so line and word diffing feed the existing array path.
 - `timeBudgetMilliseconds` option and `DiffTimeoutError`: bounds a synchronous diff by wall clock
   and reports instead of degrading. Costs nothing when omitted, since no clock is read.
+- `snapToCodePoints` option and the `snapRangesToCodePoints` pass: keeps range boundaries off the
+  middle of a surrogate pair so every range is well-formed text on its own.
 - Informative Ubuntu x86-64 benchmark workflow.
 
 ### Performance

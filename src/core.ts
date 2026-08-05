@@ -1,4 +1,5 @@
 import { DiffLimitError, DiffTimeoutError } from './errors.js'
+import { snapRangesToCodePoints } from './snap.js'
 import { DELETE, EQUAL, INSERT } from './types.js'
 import type { DiffOperation, DiffOptions, DiffRange, Indexable } from './types.js'
 
@@ -83,7 +84,11 @@ export function diffRanges<Element>(
   }
 
   if (typeof before === 'string' && typeof after === 'string' && equalsOption === undefined) {
-    return diffStringRanges(before, after, maxEditDistance, budget)
+    const stringRanges = diffStringRanges(before, after, maxEditDistance, budget)
+
+    return options?.snapToCodePoints === true
+      ? snapRangesToCodePoints(before, after, stringRanges)
+      : stringRanges
   }
 
   const equals = equalsOption ?? Object.is

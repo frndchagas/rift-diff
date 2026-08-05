@@ -9,6 +9,7 @@ import {
   DiffLimitError as DiffLimitExceededError,
   DiffTimeoutError as DiffTimeoutExceededError,
 } from '../src/errors.ts'
+import { snapRangesToCodePoints as snapRanges } from '../src/snap.ts'
 import { splitLines as splitTextLines, splitWords as splitTextWords } from '../src/tokens.ts'
 import {
   DELETE as DELETE_OPERATION,
@@ -26,5 +27,6 @@ export const invert = invertChanges
 export const invertRanges = invertRangeScript
 export const DiffLimitError = DiffLimitExceededError
 export const DiffTimeoutError = DiffTimeoutExceededError
+export const snapRangesToCodePoints = snapRanges
 export const splitLines = splitTextLines
 export const splitWords = splitTextWords
