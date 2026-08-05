@@ -2,6 +2,21 @@ import { diffRanges, validateMaxEditDistance } from './core.js'
 import { EQUAL, INSERT } from './types.js'
 import type { DiffChunk, DiffOptions, Sliceable } from './types.js'
 
+/**
+ * Computes a minimal edit script as materialized chunks, slicing the inputs at the boundaries the
+ * engine found.
+ *
+ * Same guarantees as `diffRanges`: the script is a shortest insert/delete script, concatenating
+ * every non-delete chunk reproduces `after` exactly, and adjacent chunks never share an
+ * operation. Use `diffRanges` when indexes are enough and the copies are not needed.
+ *
+ * @example
+ * diff('Good dog', 'Bad dog')
+ * // [{ operation: -1, value: 'Goo' }, { operation: 1, value: 'Ba' }, { operation: 0, value: 'd dog' }]
+ *
+ * @throws {DiffLimitError} when `options.maxEditDistance` is smaller than the true minimum.
+ * @throws {RangeError} when `options.maxEditDistance` is not a non-negative safe integer.
+ */
 export function diff<Element, Slice>(
   before: Sliceable<Element, Slice>,
   after: Sliceable<Element, Slice>,

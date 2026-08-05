@@ -116,6 +116,12 @@ bun run bench:memory:bun
 
 CI runs on macOS and Ubuntu with a pinned Bun plus a Bun canary lane.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: profile before optimizing, deltas under
+about 5% are drift until an interleaved A/B says otherwise, and minimality is never traded for
+speed in the default mode.
+
 ## License
 
 MIT

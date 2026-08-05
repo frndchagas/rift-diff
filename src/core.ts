@@ -36,6 +36,20 @@ const TRACE_DISTANCE_LIMIT = 32
 const TRACE_WORKSPACE_LIMIT_BYTES = 1.5 * 1024 * 1024
 const TRACE_SUBPROBLEM_SIZE = 32
 
+/**
+ * Computes a minimal edit script as ranges over the inputs, copying nothing.
+ *
+ * Returns a shortest insert/delete script: ignoring deletes and concatenating the equal and
+ * inserted ranges reproduces `after` exactly. Ranges are canonical — never empty on both sides,
+ * never two adjacent ranges with the same operation.
+ *
+ * Accepts strings, arrays, typed arrays, and any sequence with `length` and numeric indexing.
+ * Strings compare UTF-16 code units; other sequences use `options.equals`, defaulting to
+ * `Object.is`.
+ *
+ * @throws {DiffLimitError} when `options.maxEditDistance` is smaller than the true minimum.
+ * @throws {RangeError} when `options.maxEditDistance` is not a non-negative safe integer.
+ */
 export function diffRanges<Element>(
   before: Indexable<Element>,
   after: Indexable<Element>,
