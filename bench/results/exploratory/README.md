@@ -144,3 +144,38 @@ The change was reverted. Eliminating provably wasted work sounds free, but the w
 eliminated was not on the critical path of any scenario we can construct. The lesson is the
 measurement discipline the rest of this file already states: a figure with a 33% spread is not a
 result, and it should have been re-measured before anything was built on it.
+
+## Generator cost on the hot loop, and a measurement that nearly fooled me (`ac4d4e8` era)
+
+- Date: 2026-08-05, Node.js 26.0.0 and Bun 1.4.0, same machine as above
+
+Question: a cooperative async API needs the engine to suspend. Can the engine be a generator?
+
+A first microbenchmark said generators cost 16.5x on V8 and 26% on JSC. That result was an
+artifact: the loop body depended only on module constants, so V8 folded the direct variant while
+the generator variants ran the real work. Re-running with the loop reading an `Int32Array` filled
+at runtime, and with the accumulator threaded through the return value, reversed the picture.
+
+Medians of nine samples, three order-alternated repetitions, 4,000 outer layers by 400 inner steps:
+
+| Variant                                    | Node.js 26 | Bun 1.4 |
+| ------------------------------------------ | ---------: | ------: |
+| plain loop                                 |    0.44 ms | 0.47 ms |
+| `yield` inside the hot loop's own function |    0.75 ms | 0.46 ms |
+| hot loop extracted, generator only drives  |    0.44 ms | 0.47 ms |
+
+The suspension count is irrelevant here (62 yields against 1.6M inner steps); the cost is the loop
+body itself. V8 lowers a generator body into a resumable function whose locals live in a
+heap-allocated register file so they survive suspension, and a hot loop written directly in that
+body loses real registers. Extracting the loop into an ordinary function restores it at no cost,
+because that function optimizes normally and the generator pays only suspension bookkeeping. JSC
+does not make the distinction.
+
+Consequence for the design: making `findMyersSplit` a generator would tax every synchronous diff
+on V8 by roughly 71% and is rejected. The kernel stays an ordinary function and instead becomes
+resumable by layer range, returning either a split or a request to resume at a given layer. Its
+workspaces are already caller-owned and persist across calls, so resumption captures no state.
+
+The near-miss is the more useful record: a variant that can be constant-folded is not a baseline,
+and the same anchoring discipline the benchmark harness already enforces applies to throwaway
+microbenchmarks.
