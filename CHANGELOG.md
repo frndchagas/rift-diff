@@ -15,7 +15,7 @@ Pre-1.0 and unpublished: the public API may still change without a major version
   of degrading output.
 - Adaptive engine: affix trimming, equality and containment fast paths, a bounded Myers trace
   probe for nearby edits, and bidirectional linear-space reconstruction for large edit distances.
-- Benchmark harness with sixteen scenarios including real code, JSON, log, and prose corpora and
+- Benchmark harness with seventeen scenarios including real code, JSON, log, and prose corpora and
   array and typed-array sequences, measured against `fast-diff`, `fast-myers-diff`, and `jsdiff`
   in isolated processes with per-cell multiprocess aggregation and content-anchored checksums.
 - Test gauntlet: deterministic examples, seeded oracle fuzzing, property-based tests with

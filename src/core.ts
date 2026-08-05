@@ -45,7 +45,6 @@ function assertWithinBudget(budget: TimeBudget | undefined): void {
 }
 
 const TRACE_DISTANCE_LIMIT = 32
-const TRACE_WORKSPACE_LIMIT_BYTES = 1.5 * 1024 * 1024
 const TRACE_SUBPROBLEM_SIZE = 32
 
 /**
@@ -92,8 +91,8 @@ export function diffRanges<Element>(
   }
 
   const equals = equalsOption ?? Object.is
-  const prefixLength = findCommonPrefix(before, after, equals)
-  const suffixLength = findCommonSuffix(before, after, prefixLength, equals)
+  const prefixLength = findCommonPrefix(before, after, equals, budget)
+  const suffixLength = findCommonSuffix(before, after, prefixLength, equals, budget)
   const beforeMiddleEnd = before.length - suffixLength
   const afterMiddleEnd = after.length - suffixLength
   const ranges: MutableDiffRange[] = []
@@ -338,7 +337,6 @@ function calculateMyersRanges(
     equalsAt,
     maxEditDistance,
     TRACE_DISTANCE_LIMIT,
-    TRACE_WORKSPACE_LIMIT_BYTES,
     budget,
   )
 
@@ -382,7 +380,6 @@ function calculateTraceMyersRanges(
   equalsAt: IndexEquality,
   maxEditDistance: number | undefined,
   traceDistanceLimit: number,
-  traceWorkspaceLimitBytes: number,
   budget: TimeBudget | undefined,
 ): MutableDiffRange[] | undefined {
   const beforeLength = beforeEnd - beforeStart
@@ -401,7 +398,7 @@ function calculateTraceMyersRanges(
   frontier[offset + 1] = 0
 
   for (let distance = 0; distance <= distanceLimit; distance += 1) {
-    if (distance > traceDistanceLimit || (usedLayers + 2) * stride * 4 > traceWorkspaceLimitBytes) {
+    if (distance > traceDistanceLimit) {
       return undefined
     }
 
@@ -577,7 +574,6 @@ function calculateLinearSpaceMyersRanges(
         middleAfterEnd,
         equalsAt,
         maxEditDistance,
-        Number.POSITIVE_INFINITY,
         Number.POSITIVE_INFINITY,
         budget,
       )
@@ -945,12 +941,17 @@ function findCommonPrefix<Element>(
   before: Indexable<Element>,
   after: Indexable<Element>,
   equals: (before: Element, after: Element) => boolean,
+  budget: TimeBudget | undefined,
 ): number {
   const maximumPrefix = Math.min(before.length, after.length)
   let prefixLength = 0
 
   while (prefixLength < maximumPrefix && equals(before[prefixLength]!, after[prefixLength]!)) {
     prefixLength += 1
+
+    if ((prefixLength & 1023) === 0) {
+      assertWithinBudget(budget)
+    }
   }
 
   return prefixLength
@@ -987,6 +988,7 @@ function findCommonSuffix<Element>(
   after: Indexable<Element>,
   prefixLength: number,
   equals: (before: Element, after: Element) => boolean,
+  budget: TimeBudget | undefined,
 ): number {
   const maximumSuffix = Math.min(before.length, after.length) - prefixLength
   let suffixLength = 0
@@ -996,6 +998,10 @@ function findCommonSuffix<Element>(
     equals(before[before.length - suffixLength - 1]!, after[after.length - suffixLength - 1]!)
   ) {
     suffixLength += 1
+
+    if ((suffixLength & 1023) === 0) {
+      assertWithinBudget(budget)
+    }
   }
 
   return suffixLength

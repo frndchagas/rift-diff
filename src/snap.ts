@@ -28,10 +28,12 @@ function splitsSurrogatePair(text: string, index: number): boolean {
  * This pass moves those halves out of equal ranges and into the neighboring delete and insert
  * ranges, so every range stands alone as well-formed text.
  *
- * The result is minimal among scripts whose boundaries respect code points, which can be longer
- * than the unconstrained minimum: keeping a pair intact may cost one deletion and one insertion.
- * That is why it is opt-in through `snapToCodePoints`. Reconstruction and canonical ranges are
- * preserved.
+ * The pass only shrinks equal ranges; it does not realign them, so the result is not always the
+ * shortest script that respects code points — an equal range that shrinks to nothing is dropped,
+ * and a shared astral character can end up deleted and reinserted. Reconstruction, canonical
+ * ranges, and equality of equal ranges are preserved. It is opt-in because it lengthens the
+ * script, and it assumes exact code-unit equality: a custom `equals` that equates a surrogate
+ * with a different code unit can still leave a boundary mid-pair.
  */
 export function snapRangesToCodePoints(
   before: string,

@@ -1,5 +1,5 @@
 import { diffRanges, validateMaxEditDistance, validateTimeBudget } from './core.js'
-import { EQUAL, INSERT } from './types.js'
+import { DELETE, EQUAL } from './types.js'
 import type { DiffChunk, DiffOptions, Sliceable } from './types.js'
 
 /**
@@ -9,6 +9,11 @@ import type { DiffChunk, DiffOptions, Sliceable } from './types.js'
  * Same guarantees as `diffRanges`: the script is a shortest insert/delete script, concatenating
  * every non-delete chunk reproduces `after` exactly, and adjacent chunks never share an
  * operation. Use `diffRanges` when indexes are enough and the copies are not needed.
+ *
+ * Equal chunks carry the target's values. That only matters with a custom `equals` coarser than
+ * identity, where the two sides differ while comparing equal: forward reconstruction stays exact,
+ * but `invert` then returns to the source only up to that equality. Use `diffRanges` when you
+ * need both sides, since ranges carry coordinates into each input.
  *
  * @example
  * diff('Good dog', 'Bad dog')
@@ -46,16 +51,16 @@ function materializeRanges<Element, Slice>(
   options: DiffOptions<Element> | undefined,
 ): DiffChunk<Slice>[] {
   return diffRanges(before, after, options).map((range) => {
-    if (range.operation === INSERT) {
+    if (range.operation === DELETE) {
       return {
         operation: range.operation,
-        value: after.slice(range.afterStart, range.afterEnd),
+        value: before.slice(range.beforeStart, range.beforeEnd),
       }
     }
 
     return {
       operation: range.operation,
-      value: before.slice(range.beforeStart, range.beforeEnd),
+      value: after.slice(range.afterStart, range.afterEnd),
     }
   })
 }

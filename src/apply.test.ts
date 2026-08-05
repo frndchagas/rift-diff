@@ -42,6 +42,30 @@ describe('apply', () => {
   })
 })
 
+describe('apply with a coarse equality', () => {
+  it('reconstructs the target exactly, not the source', () => {
+    const rowsBefore = [
+      { id: 1, name: 'Ada' },
+      { id: 2, name: 'Bob' },
+    ]
+    const rowsAfter = [
+      { id: 1, name: 'Ada Lovelace' },
+      { id: 2, name: 'Bob' },
+    ]
+    const changes = diff(rowsBefore, rowsAfter, { equals: (left, right) => left.id === right.id })
+
+    expect(apply(rowsBefore, changes)).toEqual(rowsAfter)
+  })
+
+  it('reconstructs text targets under a caseless equality', () => {
+    const changes = diff('Hello World', 'hello world', {
+      equals: (left, right) => left.toLowerCase() === right.toLowerCase(),
+    })
+
+    expect(apply('Hello World', changes)).toBe('hello world')
+  })
+})
+
 describe('invert', () => {
   it('walks a diff backwards', () => {
     const changes = diff('Good dog', 'Bad dog')

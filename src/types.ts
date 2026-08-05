@@ -46,9 +46,8 @@ export interface DiffOptions<Element> {
   /**
    * Keeps range boundaries off the middle of a surrogate pair, so every range is well-formed text
    * on its own rather than only after concatenation. Applies to string inputs; other sequences
-   * already have their own element boundaries. Costs at most one deletion and one insertion per
-   * affected boundary, which is why it is opt-in: it trades the unconstrained minimum for a
-   * script that is minimal among those respecting code points.
+   * already have their own element boundaries. Opt-in because it lengthens the script: shared
+   * astral characters next to an edit can be deleted and reinserted rather than kept.
    */
   snapToCodePoints?: boolean | undefined
 }

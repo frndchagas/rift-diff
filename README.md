@@ -46,7 +46,7 @@ libraries.
   CVE-shaped bugs live in this ecosystem (ReDoS, quadratic blowups). Not shipping one removes the
   entire class.
 - Zero runtime dependencies, no native code, no WASM, no install scripts. TypeScript-native and
-  genuinely tree-shakeable: 3.0 KB gzipped importing only `diff`, 3.8 KB for the whole surface.
+  tree-shakeable: 3.3 KB gzipped importing only `diff`, 3.7 KB for the whole surface.
 
 [#79]: https://github.com/kpdecker/jsdiff/issues/79
 [#353]: https://github.com/kpdecker/jsdiff/issues/353
@@ -118,7 +118,7 @@ The exported `DELETE`, `EQUAL`, and `INSERT` constants are the readable spelling
 
 Measured on Apple M4 Max, macOS 26.5 arm64, Node.js 26 and Bun 1.4, three isolated processes per
 cell, median of per-process medians. `rift-diff` is the fastest measured implementation or within
-10% of the leader in fourteen of sixteen scenarios on Node.js. Selected cells, median operations
+10% of the leader in fifteen of seventeen scenarios on Node.js. Selected cells, median operations
 per second on Node.js (higher is better):
 
 | Scenario                     | rift-diff | fast-diff | fast-myers-diff |
@@ -137,11 +137,21 @@ guarantee minimality) and number-token arrays (leaders compare with `===`). Both
 measurements, and the escape hatches are recorded in [RFC 0001](docs/rfc-0001-engine.md).
 
 Conclusions never transfer between runtimes: leaders differ by scenario and by engine. Full tables
-for all sixteen scenarios, both runtimes, memory, and Ubuntu x86-64 live in
+for all seventeen scenarios, both runtimes, memory, and Ubuntu x86-64 live in
 [bench/results](bench/results/README.md), with every raw JSON committed.
 
 ## Known limits
 
+- **There is no default work limit.** Exact Myers is quadratic in the worst case: two fully
+  dissimilar 60 KB strings take about 52 seconds with no options set. For untrusted or unbounded
+  input, always pass `timeBudgetMilliseconds`, `maxEditDistance`, or both.
+- `apply` covers strings and arrays. A diff of two typed arrays has no `apply` overload; convert
+  with `Array.from` first, or rebuild from `diffRanges`.
+- With a custom `equals` coarser than identity, equal chunks carry the target's values, so
+  `apply(before, diff(before, after))` is exact but `apply(after, invert(...))` returns to the
+  source only up to that equality. Use `diffRanges` when you need both sides.
+- `snapToCodePoints` only shrinks equal ranges, so it lengthens the script and is not always the
+  shortest script that respects code points.
 - Positions are UTF-16 code units. By default a boundary can fall between the halves of a
   surrogate pair — concatenation still reconstructs the target, but an individual chunk can be
   invalid text. Pass `snapToCodePoints: true` to prevent it, at a cost of up to one deletion and
