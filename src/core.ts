@@ -1,4 +1,4 @@
-import { DiffLimitError } from './errors.js'
+import { DiffLimitError, DiffTimeoutError } from './errors.js'
 import { DELETE, EQUAL, INSERT } from './types.js'
 import type { DiffOperation, DiffOptions, DiffRange, Indexable } from './types.js'
 
@@ -32,6 +32,17 @@ type LinearWorkItem = DiffWorkItem | RangeWorkItem
 
 type IndexEquality = (beforeIndex: number, afterIndex: number) => boolean
 
+interface TimeBudget {
+  readonly deadline: number
+  readonly milliseconds: number
+}
+
+function assertWithinBudget(budget: TimeBudget | undefined): void {
+  if (budget !== undefined && performance.now() > budget.deadline) {
+    throw new DiffTimeoutError(budget.milliseconds)
+  }
+}
+
 const TRACE_DISTANCE_LIMIT = 32
 const TRACE_WORKSPACE_LIMIT_BYTES = 1.5 * 1024 * 1024
 const TRACE_SUBPROBLEM_SIZE = 32
@@ -57,10 +68,14 @@ export function diffRanges<Element>(
 ): DiffRange[] {
   const equalsOption = options?.equals
   const maxEditDistance = options?.maxEditDistance
+  const timeBudgetMilliseconds = options?.timeBudgetMilliseconds
 
   if (maxEditDistance !== undefined) {
     validateMaxEditDistance(maxEditDistance)
   }
+
+  const budget =
+    timeBudgetMilliseconds === undefined ? undefined : createTimeBudget(timeBudgetMilliseconds)
 
   // Identity only proves equality under the default reflexive comparison.
   if (before.length === after.length && before === after && equalsOption === undefined) {
@@ -68,7 +83,7 @@ export function diffRanges<Element>(
   }
 
   if (typeof before === 'string' && typeof after === 'string' && equalsOption === undefined) {
-    return diffStringRanges(before, after, maxEditDistance)
+    return diffStringRanges(before, after, maxEditDistance, budget)
   }
 
   const equals = equalsOption ?? Object.is
@@ -103,6 +118,7 @@ export function diffRanges<Element>(
         afterMiddleEnd,
         equalsAt,
         maxEditDistance,
+        budget,
       ),
     )
   }
@@ -112,6 +128,14 @@ export function diffRanges<Element>(
   }
 
   return ranges
+}
+
+function createTimeBudget(milliseconds: number): TimeBudget {
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
+    throw new RangeError('timeBudgetMilliseconds must be a positive finite number')
+  }
+
+  return { deadline: performance.now() + milliseconds, milliseconds }
 }
 
 function appendTrivialMiddleRanges(
@@ -145,6 +169,7 @@ function diffStringRanges(
   before: string,
   after: string,
   maxEditDistance: number | undefined,
+  budget: TimeBudget | undefined,
 ): DiffRange[] {
   const prefixLength = findCommonStringPrefix(before, after)
   const suffixLength = findCommonStringSuffix(before, after, prefixLength)
@@ -200,6 +225,7 @@ function diffStringRanges(
           afterMiddleEnd,
           equalsAt,
           maxEditDistance,
+          budget,
         ),
       )
     }
@@ -278,6 +304,7 @@ function calculateMyersRanges(
   afterEnd: number,
   equalsAt: IndexEquality,
   maxEditDistance: number | undefined,
+  budget: TimeBudget | undefined,
 ): MutableDiffRange[] {
   if (maxEditDistance !== undefined) {
     const ranges = calculateTraceMyersRanges(
@@ -289,6 +316,7 @@ function calculateMyersRanges(
       maxEditDistance,
       Number.POSITIVE_INFINITY,
       Number.POSITIVE_INFINITY,
+      budget,
     )
 
     if (!ranges) {
@@ -307,11 +335,12 @@ function calculateMyersRanges(
     undefined,
     TRACE_DISTANCE_LIMIT,
     TRACE_WORKSPACE_LIMIT_BYTES,
+    budget,
   )
 
   return (
     tracedRanges ??
-    calculateLinearSpaceMyersRanges(beforeStart, beforeEnd, afterStart, afterEnd, equalsAt)
+    calculateLinearSpaceMyersRanges(beforeStart, beforeEnd, afterStart, afterEnd, equalsAt, budget)
   )
 }
 
@@ -324,6 +353,7 @@ function calculateTraceMyersRanges(
   maxEditDistance: number | undefined,
   traceDistanceLimit: number,
   traceWorkspaceLimitBytes: number,
+  budget: TimeBudget | undefined,
 ): MutableDiffRange[] | undefined {
   const beforeLength = beforeEnd - beforeStart
   const afterLength = afterEnd - afterStart
@@ -344,6 +374,8 @@ function calculateTraceMyersRanges(
     if (distance > traceDistanceLimit || (usedLayers + 2) * stride * 4 > traceWorkspaceLimitBytes) {
       return undefined
     }
+
+    assertWithinBudget(budget)
 
     if (usedLayers === layerCapacity) {
       layerCapacity = Math.min(layerCapacity * 4, distanceLimit + 1)
@@ -406,6 +438,7 @@ function calculateLinearSpaceMyersRanges(
   afterStart: number,
   afterEnd: number,
   equalsAt: IndexEquality,
+  budget: TimeBudget | undefined,
 ): MutableDiffRange[] {
   const ranges: MutableDiffRange[] = []
   const work: LinearWorkItem[] = [{ kind: 'diff', beforeStart, beforeEnd, afterStart, afterEnd }]
@@ -414,6 +447,8 @@ function calculateLinearSpaceMyersRanges(
   const reverseWorkspace = new Int32Array(workspaceLength)
 
   while (work.length > 0) {
+    assertWithinBudget(budget)
+
     const item = work.pop()
 
     if (!item) {
@@ -511,6 +546,7 @@ function calculateLinearSpaceMyersRanges(
         undefined,
         Number.POSITIVE_INFINITY,
         Number.POSITIVE_INFINITY,
+        budget,
       )
 
       if (!tracedRanges) {
@@ -531,6 +567,7 @@ function calculateLinearSpaceMyersRanges(
       equalsAt,
       forwardWorkspace,
       reverseWorkspace,
+      budget,
     )
 
     if (!split) {
@@ -579,6 +616,7 @@ function findMyersSplit(
   equalsAt: IndexEquality,
   forward: Int32Array,
   reverse: Int32Array,
+  budget: TimeBudget | undefined,
 ): MyersSplit | undefined {
   const beforeLength = beforeEnd - beforeStart
   const afterLength = afterEnd - afterStart
@@ -594,6 +632,10 @@ function findMyersSplit(
   reverse[offset + 1] = 0
 
   for (let distance = 0; distance < maximumDistance; distance += 1) {
+    if ((distance & 63) === 0) {
+      assertWithinBudget(budget)
+    }
+
     const diagonalMin = 2 * Math.max(0, distance - afterLength) - distance
     const diagonalMax = distance - 2 * Math.max(0, distance - beforeLength)
     const overlapLimit = overlapsOnForwardPass ? distance - 1 : distance

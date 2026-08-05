@@ -30,11 +30,19 @@ libraries.
   (diff-match-patch [#51], jsdiff [#91]).
 - **Apply and invert included.** A diff you cannot apply or reverse is half a feature
   (fast-diff [#24], jsdiff [#95], [#629]).
+- **Line and word tokenizers that are lossless.** `splitLines` and `splitWords` join back to the
+  original exactly, and `splitWords` is Unicode-aware and keeps whitespace as its own tokens.
+  Elsewhere this is a wiki recipe people re-ask for (diff-match-patch [#82], [#126]) or a tokenizer
+  with recurring quality complaints (jsdiff [#553], [#29], [#414]).
+- **A time budget that reports.** `timeBudgetMilliseconds` throws `DiffTimeoutError` when the
+  engine is still searching. The one library asked for this closed the request unimplemented
+  (fast-myers-diff [#18]) and the one that has a timeout degrades silently (diff-match-patch
+  [#78]).
 - **No patch parser, deliberately.** The unified-diff parser and fuzzy patch applier are where the
   CVE-shaped bugs live in this ecosystem (ReDoS, quadratic blowups). Not shipping one removes the
   entire class.
-- Zero runtime dependencies, no native code, no WASM, no install scripts. About 3.0 KB gzipped,
-  tree-shakeable, TypeScript-native.
+- Zero runtime dependencies, no native code, no WASM, no install scripts. TypeScript-native and
+  genuinely tree-shakeable: 3.0 KB gzipped importing only `diff`, 3.5 KB for the whole surface.
 
 [#79]: https://github.com/kpdecker/jsdiff/issues/79
 [#353]: https://github.com/kpdecker/jsdiff/issues/353
@@ -49,6 +57,11 @@ libraries.
 [#78]: https://github.com/google/diff-match-patch/issues/78
 [#121]: https://github.com/google/diff-match-patch/issues/121
 [#54]: https://github.com/google/diff-match-patch/issues/54
+[#82]: https://github.com/google/diff-match-patch/issues/82
+[#126]: https://github.com/google/diff-match-patch/issues/126
+[#553]: https://github.com/kpdecker/jsdiff/issues/553
+[#29]: https://github.com/kpdecker/jsdiff/issues/29
+[#414]: https://github.com/kpdecker/jsdiff/issues/414
 [#51]: https://github.com/google/diff-match-patch/issues/51
 
 ## Usage
@@ -124,6 +137,10 @@ for all sixteen scenarios, both runtimes, memory, and Ubuntu x86-64 live in
 - Positions are UTF-16 code units. A range boundary can therefore fall between the halves of a
   surrogate pair when an edit lands mid-character. To diff by code point or by grapheme, tokenize
   first and use the array API: `diff([...before], [...after])`, or `Intl.Segmenter` for graphemes.
+- `timeBudgetMilliseconds` is checked at coarse intervals, so the stop can overshoot slightly. It
+  bounds a synchronous call; an `AbortSignal` cannot, because nothing can set it while synchronous
+  work runs. Cooperative asynchronous diffing with real cancellation is specified in RFC 0001 and
+  not implemented yet.
 - No unified-diff parsing or fuzzy patch application, by design (see above).
 - No three-way merge, and no semantic grouping of nearby edits: the output is minimal, which is
   not the same as human-pretty.

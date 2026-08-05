@@ -36,6 +36,13 @@ export interface DiffOptions<Element> {
    * safe integer.
    */
   maxEditDistance?: number
+  /**
+   * Wall-clock budget in milliseconds. When the engine is still searching after it elapses, the
+   * call throws {@link DiffTimeoutError} rather than degrading the result. Checked at coarse
+   * intervals, so the actual stop can overshoot slightly. Must be a positive finite number.
+   * Omitting it costs nothing: no clock is read.
+   */
+  timeBudgetMilliseconds?: number
 }
 
 /**

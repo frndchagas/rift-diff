@@ -24,6 +24,10 @@ Pre-1.0 and unpublished: the public API may still change without a major version
 - `apply(source, changes)` rebuilds the target from a diff, and `invert(changes)` reverses one so
   it walks back to the source; `invertRanges` does the same for the range API. Round trips in both
   directions are property-tested for strings and arrays.
+- `splitLines` and `splitWords` tokenizers: lossless (joining returns the input), Unicode-aware,
+  and whitespace-preserving, so line and word diffing feed the existing array path.
+- `timeBudgetMilliseconds` option and `DiffTimeoutError`: bounds a synchronous diff by wall clock
+  and reports instead of degrading. Costs nothing when omitted, since no clock is read.
 - Informative Ubuntu x86-64 benchmark workflow.
 
 ### Performance
