@@ -114,17 +114,19 @@ export function diffRanges<Element>(
     const equalsAt: IndexEquality = (beforeIndex, afterIndex) =>
       equals(before[beforeIndex]!, after[afterIndex]!)
 
-    ranges.push(
-      ...calculateMyersRanges(
-        prefixLength,
-        beforeMiddleEnd,
-        prefixLength,
-        afterMiddleEnd,
-        equalsAt,
-        maxEditDistance,
-        budget,
-      ),
+    const middleRanges = calculateMyersRanges(
+      prefixLength,
+      beforeMiddleEnd,
+      prefixLength,
+      afterMiddleEnd,
+      equalsAt,
+      maxEditDistance,
+      budget,
     )
+
+    for (const range of middleRanges) {
+      ranges.push(range)
+    }
   }
 
   if (suffixLength > 0) {
