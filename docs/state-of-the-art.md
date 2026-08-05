@@ -103,6 +103,28 @@ scenario's self time already sits in the bisect kernel at about 3 ns per cell. A
 speedup under a guaranteed-minimal contract would require an explicit non-minimal mode, which RFC
 0001 reserves as a future, opt-in `readable` semantics decision.
 
+## Bit-parallel feasibility, measured
+
+Bit-parallel Myers is the most-cited remaining acceleration idea, so it was probed rather than
+assumed. Two findings, both measured on this project (Node.js 26, Apple M4 Max):
+
+- **Metric mismatch.** The published bit-vector algorithm computes Levenshtein distance, where a
+  substitution costs one. Our contract is insert/delete only, where a substitution costs two. On a
+  23-character pair the bit-vector reported 7 while our engine reported the correct 12 for our
+  metric. The applicable variant is Hyyrö's bit-parallel LCS-length computation, not the
+  approximate-matching algorithm usually referenced.
+- **Word-size wall in JavaScript.** With 32-bit blocks, a 1,001-character pair took 50.9 µs for
+  distance alone, against 2.1 µs for our complete diff including the edit script. JavaScript's
+  bitwise operators are 32-bit, so patterns beyond one word need multi-block carry propagation,
+  and the constant factor overwhelms the parallelism at text sizes. BigInt avoids the blocking but
+  allocates per operation.
+- Where it could pay is trimmed middles of at most 32 units, and even there it yields a distance,
+  not a script: Edlib recovers the path by combining the bit-vector with Hirschberg, which is a
+  second pass. Our probe already resolves small middles in one pass with the script included.
+
+Conclusion: bit-parallel remains a research track, viable as an independent correctness oracle for
+small inputs, not as an accelerator for this contract in JavaScript.
+
 ## Proposed adaptive architecture
 
 1. Preserve equality and affix trimming before workspace allocation.
@@ -132,6 +154,7 @@ new algorithm family.
 - Gene Myers, [A Fast Bit-Vector Algorithm for Approximate String Matching Based on Dynamic Programming](https://doi.org/10.1145/316542.316550), JACM, 1999.
 - Santiago Marco-Sola et al., [Fast Gap-Affine Pairwise Alignment Using the Wavefront Algorithm](https://doi.org/10.1093/bioinformatics/btaa777), Bioinformatics, 2021.
 - Santiago Marco-Sola et al., [Optimal Gap-Affine Alignment in O(s) Space](https://pmc.ncbi.nlm.nih.gov/articles/PMC9940620/), Bioinformatics, 2023.
+- Heikki Hyyrö, [Explaining and Extending the Bit-parallel Approximate String Matching Algorithm of Myers](https://www.semanticscholar.org/paper/ec02dc32220d26f6a84c89f49ecc42fc91e4a592), 2001.
 - Martin Šošić and Mile Šikić, [Edlib: a C/C++ Library for Fast, Exact Sequence Alignment Using Edit Distance](https://pmc.ncbi.nlm.nih.gov/articles/PMC5408825/), Bioinformatics, 2017.
 - Git, [Diff algorithm options](https://git-scm.com/docs/diff-algorithm-option.html).
 - Google, [diff-match-patch](https://github.com/google/diff-match-patch).
