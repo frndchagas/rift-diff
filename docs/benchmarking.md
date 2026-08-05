@@ -138,6 +138,15 @@ Treat cross-run deltas below these floors as unresolved, not as regressions or w
 delta matters, rerun both implementations in the same period with interleaved, order-alternating
 isolated workers, and prefer medians across worker processes over a single process per cell.
 
+## Raw report retention
+
+Reports keep every timing sample, so they grow much faster than the source. `bench/results/`
+retains only reports that back a live claim: the anchored baseline, the runs behind the current
+distance table, and the platform evidence. When a report is superseded — by a newer official run
+or by a harness change that invalidates its numbers — its conclusion moves into the optimization
+history in `bench/results/README.md` and the raw file is pruned. Never delete a report that a
+current claim links to.
+
 ## Known limitations
 
 - Laptop thermals and background work still affect results even with isolated workers and rotation.
