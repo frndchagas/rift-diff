@@ -248,17 +248,19 @@ function diffStringRanges(
       const equalsAt: IndexEquality = (beforeIndex, afterIndex) =>
         before.charCodeAt(beforeIndex) === after.charCodeAt(afterIndex)
 
-      ranges.push(
-        ...calculateMyersRanges(
-          prefixLength,
-          beforeMiddleEnd,
-          prefixLength,
-          afterMiddleEnd,
-          equalsAt,
-          maxEditDistance,
-          budget,
-        ),
+      const middleRanges = calculateMyersRanges(
+        prefixLength,
+        beforeMiddleEnd,
+        prefixLength,
+        afterMiddleEnd,
+        equalsAt,
+        maxEditDistance,
+        budget,
       )
+
+      for (const range of middleRanges) {
+        ranges.push(range)
+      }
     }
   }
 
