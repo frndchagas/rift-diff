@@ -44,6 +44,13 @@ interface TimeBudget {
   readonly milliseconds: number
 }
 
+interface SliceController {
+  readonly layerLimit: number
+  expired: () => boolean
+}
+
+type RangeGenerator = Generator<void, MutableDiffRange[], void>
+
 function assertWithinBudget(budget: TimeBudget | undefined): void {
   if (budget !== undefined && performance.now() > budget.deadline) {
     throw new DiffTimeoutError(budget.milliseconds)
@@ -352,14 +359,17 @@ function calculateMyersRanges(
     return tracedRanges
   }
 
-  const linearRanges = calculateLinearSpaceMyersRanges(
-    beforeStart,
-    beforeEnd,
-    afterStart,
-    afterEnd,
-    equalsAt,
-    maxEditDistance,
-    budget,
+  const linearRanges = drainRanges(
+    calculateLinearSpaceMyersRanges(
+      beforeStart,
+      beforeEnd,
+      afterStart,
+      afterEnd,
+      equalsAt,
+      maxEditDistance,
+      budget,
+      undefined,
+    ),
   )
 
   if (maxEditDistance !== undefined) {
@@ -467,7 +477,7 @@ function calculateTraceMyersRanges(
   throw new DiffLimitError(distanceLimit)
 }
 
-function calculateLinearSpaceMyersRanges(
+function* calculateLinearSpaceMyersRanges(
   beforeStart: number,
   beforeEnd: number,
   afterStart: number,
@@ -475,9 +485,11 @@ function calculateLinearSpaceMyersRanges(
   equalsAt: IndexEquality,
   maxEditDistance: number | undefined,
   budget: TimeBudget | undefined,
-): MutableDiffRange[] {
+  slice: SliceController | undefined,
+): RangeGenerator {
   const splitDistanceLimit =
     maxEditDistance === undefined ? Number.POSITIVE_INFINITY : Math.ceil(maxEditDistance / 2) + 1
+  const layerLimit = slice === undefined ? Number.POSITIVE_INFINITY : slice.layerLimit
   const ranges: MutableDiffRange[] = []
   const work: LinearWorkItem[] = [{ kind: 'diff', beforeStart, beforeEnd, afterStart, afterEnd }]
   const workspaceLength = beforeEnd - beforeStart + (afterEnd - afterStart) + 4
@@ -486,6 +498,10 @@ function calculateLinearSpaceMyersRanges(
 
   while (work.length > 0) {
     assertWithinBudget(budget)
+
+    if (slice !== undefined && slice.expired()) {
+      yield
+    }
 
     const item = work.pop()
 
@@ -598,7 +614,7 @@ function calculateLinearSpaceMyersRanges(
       continue
     }
 
-    const outcome = findMyersSplit(
+    let outcome = findMyersSplit(
       middleBeforeStart,
       middleBeforeEnd,
       middleAfterStart,
@@ -610,11 +626,30 @@ function calculateLinearSpaceMyersRanges(
       maxEditDistance,
       budget,
       0,
-      Number.POSITIVE_INFINITY,
+      layerLimit,
     )
 
-    if (outcome && 'resumeFrom' in outcome) {
-      throw new Error('Myers bisect suspended without a layer limit')
+    while (outcome !== undefined && 'resumeFrom' in outcome) {
+      if (slice !== undefined && slice.expired()) {
+        yield
+      }
+
+      assertWithinBudget(budget)
+
+      outcome = findMyersSplit(
+        middleBeforeStart,
+        middleBeforeEnd,
+        middleAfterStart,
+        middleAfterEnd,
+        equalsAt,
+        forwardWorkspace,
+        reverseWorkspace,
+        splitDistanceLimit,
+        maxEditDistance,
+        budget,
+        outcome.resumeFrom,
+        layerLimit,
+      )
     }
 
     const split = outcome
@@ -655,6 +690,16 @@ function calculateLinearSpaceMyersRanges(
   }
 
   return ranges
+}
+
+function drainRanges(generator: RangeGenerator): MutableDiffRange[] {
+  let step = generator.next()
+
+  while (!step.done) {
+    step = generator.next()
+  }
+
+  return step.value
 }
 
 function countCommonPrefix(
