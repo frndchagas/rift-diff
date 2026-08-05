@@ -55,7 +55,6 @@ const TRACE_DISTANCE_LIMIT = 32
 const TRACE_SUBPROBLEM_SIZE = 32
 const DEFAULT_SLICE_MILLISECONDS = 8
 const ASYNC_LAYER_LIMIT = 16
-const UNLIMITED_LAYERS = 0
 
 const scheduleNextSlice: () => Promise<void> =
   typeof setImmediate === 'function'
@@ -787,7 +786,6 @@ function* calculateLinearSpaceMyersRanges(
 ): RangeGenerator {
   const splitDistanceLimit =
     maxEditDistance === undefined ? Number.POSITIVE_INFINITY : Math.ceil(maxEditDistance / 2) + 1
-  const layerLimit = slice === undefined ? UNLIMITED_LAYERS : slice.layerLimit
   const ranges: MutableDiffRange[] = []
   const work: LinearWorkItem[] = [{ kind: 'diff', beforeStart, beforeEnd, afterStart, afterEnd }]
   const workspaceLength = beforeEnd - beforeStart + (afterEnd - afterStart) + 4
@@ -914,14 +912,8 @@ function* calculateLinearSpaceMyersRanges(
 
     const maximumDistance = Math.ceil((beforeLength + afterLength) / 2)
     let split: MyersSplit | undefined
-    let firstLayer = 0
 
-    for (;;) {
-      const lastLayer =
-        layerLimit === UNLIMITED_LAYERS
-          ? maximumDistance
-          : Math.min(maximumDistance, firstLayer + layerLimit)
-
+    if (slice === undefined) {
       split = findMyersSplit(
         middleBeforeStart,
         middleBeforeEnd,
@@ -933,21 +925,42 @@ function* calculateLinearSpaceMyersRanges(
         splitDistanceLimit,
         maxEditDistance,
         budget,
-        firstLayer,
-        lastLayer,
+        0,
+        maximumDistance,
       )
+    } else {
+      let firstLayer = 0
 
-      if (split !== undefined || lastLayer >= maximumDistance) {
-        break
+      for (;;) {
+        const lastLayer = Math.min(maximumDistance, firstLayer + slice.layerLimit)
+
+        split = findMyersSplit(
+          middleBeforeStart,
+          middleBeforeEnd,
+          middleAfterStart,
+          middleAfterEnd,
+          equalsAt,
+          forwardWorkspace,
+          reverseWorkspace,
+          splitDistanceLimit,
+          maxEditDistance,
+          budget,
+          firstLayer,
+          lastLayer,
+        )
+
+        if (split !== undefined || lastLayer >= maximumDistance) {
+          break
+        }
+
+        firstLayer = lastLayer
+
+        if (slice.expired()) {
+          yield
+        }
+
+        assertWithinBudget(budget)
       }
-
-      firstLayer = lastLayer
-
-      if (slice !== undefined && slice.expired()) {
-        yield
-      }
-
-      assertWithinBudget(budget)
     }
 
     if (!split) {
