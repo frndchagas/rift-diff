@@ -87,6 +87,29 @@ result against the immediately preceding `rift-diff` result on the same harness 
 | Output anchoring                    | Measurement fix; invalidated all earlier baselines (see below)             |
 | Inlinable fast path                 | Equal short text +50.1% on Node.js, reaching parity with `fast-diff`       |
 | Mid-distance and wide-middle guards | Benchmark surface: the 21-32 distance band, narrow and wide middles        |
+| Cooperative async engine (RFC 0002) | Synchronous path neutral except real prose -3.4% on V8; see below          |
+
+### RFC 0002: what the async engine cost the synchronous path
+
+`diffRangesAsync` landed on a resumable bisect kernel and a generator linear driver. The table
+above is unchanged: an interleaved A/B against the pre-RFC baseline `7cb5182`, ten
+order-alternated repetitions on both runtimes, measured every cell inside the drift floor with one
+exception. `equal-short`, the gating cell named in the RFC, measured +0.5% and -0.4% on Node.js and
++0.2% and -0.2% on Bun.
+
+The exception is **real prose, -3.4% on Node.js**, which does not reproduce on Bun (+1.2%). An A/A
+control on the same machine state resolves that cell to about ±1%, so it is a residual regression
+on V8 rather than drift, and it is recorded here rather than absorbed into the floor. The cause is
+structural: the linear driver is a generator, and V8 gives a generator body a heap-allocated
+register file that JSC does not. Removing it would mean maintaining a second, non-generator driver
+for the synchronous path — a trade to decide deliberately, not a defect to patch quietly.
+
+The RFC's literal design was narrowed by measurement. It called for three generator routers; a
+drained generator router measured +12.5 ns per call on Node.js and +9.1 ns on Bun even when it
+never yields, which would have cost single append about 20% and length-imbalanced containment about
+12%. Only the linear driver became a generator, where every cell that reaches it costs at least
+2.3 us and one allocation is under 0.55%. Details, including five refuted hypotheses about a 6-9%
+kernel regression, are in [exploratory/](exploratory/README.md).
 
 ### Rectification: pre-anchoring numbers are not baselines
 

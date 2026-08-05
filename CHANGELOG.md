@@ -4,6 +4,33 @@ All notable changes to this project are documented here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `diffRangesAsync(before, after, options?)` computes the same minimal script as `diffRanges` while
+  yielding the event loop between slices, so a long diff neither blocks the loop nor ignores
+  cancellation. `AsyncDiffOptions` adds `signal` and `sliceMilliseconds` (default 8, under a 60 Hz
+  frame). Measured longest event-loop block tracks `sliceMilliseconds`, and wall-clock overhead
+  against the synchronous path is inside ±5% on both runtimes.
+- `DiffAbortError`, thrown when the signal aborts. Partial work is discarded rather than returned:
+  a partial script does not reconstruct the target, so passing one to `apply` would corrupt data.
+
+### Fixed
+
+- `diffStringRanges` no longer appends the Myers result with `push(...ranges)`. `2269f75` fixed
+  this on the generic path but left it on the string path, which is the one every string diff
+  without a custom `equals` takes; V8 rejects a spread above roughly 125k arguments.
+- The mutation gauntlet runs again. It had been failing its dry run since `c2f700a`, whose
+  workspace test costs about 120 ms normally but 17.9 s under Stryker's instrumentation, above
+  vitest's default 5 s timeout.
+
+### Performance
+
+- The synchronous path is unchanged within the drift floor on both runtimes, with one recorded
+  exception: real prose measures about -3.4% on Node.js and does not reproduce on Bun. See
+  [bench/results/README.md](bench/results/README.md).
+
 ## [0.2.0] - 2026-08-05
 
 Closes the API gaps a pre-release review found, before the surface takes root.

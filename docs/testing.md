@@ -18,6 +18,7 @@ inputs, fuzzing, and the rule that no bug is fixed until a test reproduces it.
 | Differential vs incumbents               | `src/differential.test.ts` | every `bun run test`        |
 | Unicode contract                         | `src/unicode.test.ts`      | every `bun run test`        |
 | Heavy fuzz (7,000 pairs + unseeded runs) | `src/extended.test.ts`     | `bun run test:extended`, CI |
+| Async equivalence, abort, and slicing    | `src/async.test.ts`        | every `bun run test`        |
 | Package smoke (ESM and CJS artifacts)    | `scripts/smoke-*`          | every `bun run build`       |
 
 ## What the properties assert
@@ -61,10 +62,24 @@ changes.
 ## Mutation testing
 
 `bun run test:mutation` runs Stryker over `src/core.ts` and `src/diff.ts` with the vitest runner
-(937 mutants, about 100 seconds; `tsconfigFile` points at a non-existent file because Stryker's
-tsconfig preprocessor is incompatible with TypeScript 7's API, and our tsconfig needs no sandbox
-rewriting). First measured scores: 76.1% overall, 78.4% on covered code — 677 killed, 36 timed
-out, 196 survived, 28 without coverage.
+(`tsconfigFile` points at a non-existent file because Stryker's tsconfig preprocessor is
+incompatible with TypeScript 7's API, and our tsconfig needs no sandbox rewriting). Current scores
+after RFC 0002: 1,286 mutants in about 12 minutes, 90.8% overall and 93.7% on covered code — 1,120
+killed, 48 timed out, 79 survived, 39 without coverage.
+
+Note the trend against the pre-RFC measurement (1,036 mutants, 92.4% and 96.0%): the async API adds
+about 250 mutants that are overwhelmingly _routing_ — fast-path guards, string-versus-generic
+dispatch, and slice timing — and route mutants are the group the oracles cannot distinguish by
+output. Every one of the 21 survivors inside `diffRangesAsync` is route-equivalent (mutating the
+identity fast path or the dispatch still yields a minimal, identical script), timing-equivalent
+(mutating `sliceDeadline` or `expired()` changes when the engine yields, never what it produces),
+or genuinely equivalent (the value handed to `generator.return` is discarded). The same mutants
+survive on the synchronous twins. No new survivor sits on a semantic line, which is the condition
+the policy below actually asserts.
+
+Two structurally unreachable spots are recorded rather than chased: the linear driver's prefix
+trim, which cannot fire (see `bench/results/exploratory/README.md`), and the body of the loop in
+`drainRanges`, which never runs because a generator with no slice controller never suspends.
 
 The raw score structurally understates this suite because the engine is adaptive: many mutants
 flip route selection (containment versus Myers, trace probe versus linear engine, which side to

@@ -238,3 +238,64 @@ The trim is therefore one comparison that always fails, per work item. Removing 
 iteration of its own, not a rider on this one: the correction recorded above under `ffedba9` is
 exactly the case of provably wasted work that turned out not to sit on any measurable critical
 path, and this one costs O(1) per item rather than O(n).
+
+## What a resumable kernel actually costs, in five refuted hypotheses (`03271d8` era)
+
+- Date: 2026-08-05, Node.js 26.0.0 and Bun 1.4.0, same machine as above
+
+Making `findMyersSplit` resumable cost 6-9% on every cell that reaches the linear engine — fully
+different -9.4%, real code -6.5%, real json -6.0% against `ef7df90`. `equal-short`, the RFC's
+gating cell, stayed clean throughout, which is precisely why the wider matrix is measured too: a
+gate protects the case it names and nothing else.
+
+Bisection put the entire loss in the kernel commit. Five hypotheses about which part were measured
+and refuted:
+
+| Hypothesis                                              | Result      |
+| ------------------------------------------------------- | ----------- |
+| The two extra parameters                                | +0.1%/-0.2% |
+| A double-typed suspension limit (`Infinity`)            | no recovery |
+| The suspension check inside the diagonal loop           | no recovery |
+| Parametric loop bounds instead of `0`/`maximumDistance` | +3.7%/-2.0% |
+| Clamping those bounds to prove their range              | no recovery |
+
+The cause was the initialization. The original kernel ran `forward.fill(-1, 0, vectorLength)`
+unconditionally on entry, which proves to V8 that both workspaces hold at least `vectorLength`
+elements and lets it drop the bounds check on every typed-array access in the diagonal loop.
+Resuming requires that fill to be conditional — it would otherwise erase the frontier — and the
+proof left with it. An explicit workspace-size guard restores both the proof and the throughput:
++1.2%/-1.0% against `ef7df90` over ten order-alternated repetitions.
+
+A second, smaller cost came from the resume loop wrapping every kernel call, including on the
+synchronous path where suspension cannot happen. That loop lives in the generator body, so its
+locals sit in the heap-allocated register file and are touched once per work item. The damage
+tracked subproblem size — cells with small subproblems per split lost most (real prose -4.5%, real
+json -1.3%), cells with large ones lost nothing (real code, fully different, one split of 560 us).
+Branching so the synchronous path calls the kernel once, directly, recovered most of it.
+
+Final position against the pre-RFC baseline `7cb5182`, ten order-alternated repetitions:
+
+| Cell                            | Node.js 26 | Bun 1.4 |
+| ------------------------------- | ---------: | ------: |
+| `rift-ranges` equal-short       |      +0.5% |   +0.2% |
+| `rift-materialized` equal-short |      -0.4% |   -0.2% |
+| single append                   |      +0.5% |   -0.5% |
+| length-imbalanced containment   |      -0.2% |   +0.5% |
+| middle replacement              |      -0.2% |   +1.6% |
+| repetitive shift                |      +0.5% |   +2.8% |
+| dispersed edits                 |      -0.0% |   +1.0% |
+| fully different                 |      +3.8% |   +0.3% |
+| real code                       |      -2.6% |   -1.9% |
+| real json                       |      -1.3% |   +0.1% |
+| real prose                      |      -3.4% |   +1.2% |
+
+**Real prose is a residual regression on V8, not drift.** An A/A control with byte-identical
+bundles on the same machine state measured +0.4% on that cell, so the instrument resolves to about
+±1% there. It does not reproduce on JSC (+1.2%), which matches the engine difference already
+recorded above: V8 lowers a generator body into a resumable function with a heap-allocated register
+file and JSC does not. It is reported rather than rounded away, and closing it would mean keeping a
+separate non-generator driver for the synchronous path.
+
+The method note: two of the five refuted hypotheses were plausible enough to have been adopted
+without measurement, and the real cause — an unconditional `fill` doubling as a range proof — is
+not something reading the diff would suggest. Bisect to the commit, then bisect inside it.

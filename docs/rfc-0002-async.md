@@ -1,7 +1,8 @@
 # RFC 0002: cooperative async diffing
 
-Status: accepted, not implemented. Design fixed by measurement; see
-`bench/results/exploratory/README.md` (`ac4d4e8` era).
+Status: implemented in `03271d8`, with two design points narrowed by measurement during
+implementation — see [Implementation notes](#implementation-notes). Original design fixed by
+measurement; see `bench/results/exploratory/README.md` (`ac4d4e8` era).
 
 ## Problem
 
@@ -73,3 +74,33 @@ The signal is checked at slice boundaries, so cancellation latency is bounded by
 
 That last criterion is the one to hold the line on. The feature is worth having, but not at the
 cost of the synchronous path that every current user depends on.
+
+## Implementation notes
+
+Two design points did not survive measurement, and one acceptance criterion turned out to be
+narrower than intended.
+
+**Only one router became a generator.** Rule 2 named three. A drained generator router measured
++12.5 ns per call on Node.js 26 and +9.1 ns on Bun 1.4 even when it never yields, and
+`diffStringRanges` runs on every string diff: that would have cost single append about 20% and
+length-imbalanced containment about 12%. Only `calculateLinearSpaceMyersRanges` is a generator,
+where every cell that reaches it costs at least 2.3 us so one allocation is under 0.55%.
+`calculateMyersRanges` and `diffStringRanges` keep their synchronous shape and have thin generator
+twins for the async path, sharing every helper and the kernel.
+
+**The gating cell was not enough.** Rule 3 and the acceptance criterion both name `equal-short`,
+and it stayed clean through a 6-9% regression on every cell that reaches the linear engine — the
+identity fast path executes none of the changed code, so it could not see the problem. The wider
+matrix caught it. A gate protects the case it names; it is not a proxy for the synchronous path.
+
+**The kernel's initialization was load-bearing beyond initialization.** Rule 1 says resuming
+captures no state because the workspaces are caller-owned, which is true. What it missed is that
+the unconditional `forward.fill(-1, 0, vectorLength)` also proved to V8 that the workspaces are
+large enough, letting it drop bounds checks throughout the diagonal loop. Making the fill
+conditional removed the proof. An explicit workspace-size guard restores it.
+
+One residual regression is accepted and recorded: real prose measures about -3.4% on Node.js and
+does not reproduce on Bun. It follows from the linear driver being a generator at all — V8 gives a
+generator body a heap-allocated register file, JSC does not. Closing it would mean maintaining a
+second non-generator driver for the synchronous path, which is a deliberate trade rather than a
+defect to patch.
