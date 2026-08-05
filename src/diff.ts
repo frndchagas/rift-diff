@@ -1,6 +1,6 @@
 import { diffRanges, validateMaxEditDistance, validateTimeBudget } from './core.js'
 import { DELETE, EQUAL } from './types.js'
-import type { DiffChunk, DiffOptions, Sliceable } from './types.js'
+import type { DiffChunk, DiffOptions, DiffRange, Sliceable } from './types.js'
 
 /**
  * Computes a minimal edit script as materialized chunks, slicing the inputs at the boundaries the
@@ -43,6 +43,38 @@ export function diff<Element, Slice>(
   }
 
   return materializeRanges(before, after, options)
+}
+
+/**
+ * Turns ranges into materialized chunks, slicing each range from the input it describes.
+ *
+ * This is what `diff` does internally, exposed so the range-producing functions have a consumer:
+ * pass the output of `diffRanges`, `invertRanges`, or `snapRangesToCodePoints` along with the two
+ * inputs those ranges index. Delete ranges slice from `before`; equal and insert ranges slice from
+ * `after`, so concatenating every non-delete chunk reproduces the target.
+ *
+ * @example
+ * const ranges = snapRangesToCodePoints(before, after, diffRanges(before, after))
+ * materialize(before, after, ranges)
+ */
+export function materialize<Element, Slice>(
+  before: Sliceable<Element, Slice>,
+  after: Sliceable<Element, Slice>,
+  ranges: readonly DiffRange[],
+): DiffChunk<Slice>[] {
+  return ranges.map((range) => {
+    if (range.operation === DELETE) {
+      return {
+        operation: range.operation,
+        value: before.slice(range.beforeStart, range.beforeEnd),
+      }
+    }
+
+    return {
+      operation: range.operation,
+      value: after.slice(range.afterStart, range.afterEnd),
+    }
+  })
 }
 
 function materializeRanges<Element, Slice>(

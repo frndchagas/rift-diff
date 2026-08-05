@@ -4,6 +4,20 @@ All notable changes to this project are documented here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-05
+
+Closes the API gaps a pre-release review found, before the surface takes root.
+
+### Added
+
+- `materialize(before, after, ranges)` turns ranges into chunks. Without it the range-producing
+  functions had no public consumer: callers had to hand-write the loop and know the non-obvious
+  rule about which input each operation slices from.
+- `apply` now accepts typed arrays and returns the same kind, so the typed-array support the
+  readme advertises works end to end.
+- `DiffError`, a base class for `DiffLimitError` and `DiffTimeoutError`, so an exhausted budget can
+  be caught with one check. Invalid options keep throwing `RangeError`.
+
 ## [0.1.0] - 2026-08-05
 
 First published release. Pre-1.0: the public API may still change without a major version bump.
@@ -67,3 +81,4 @@ budget was not enforced during affix trimming.
   a possible post-1.0 addition.
 
 [0.1.0]: https://github.com/frndchagas/rift-diff/releases/tag/v0.1.0
+[0.2.0]: https://github.com/frndchagas/rift-diff/releases/tag/v0.2.0

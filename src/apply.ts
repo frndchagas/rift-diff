@@ -1,12 +1,34 @@
 import { DELETE, INSERT } from './types.js'
 import type { DiffChunk, DiffRange } from './types.js'
 
+type TypedArray =
+  | Int8Array
+  | Uint8Array
+  | Uint8ClampedArray
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Uint32Array
+  | Float32Array
+  | Float64Array
+  | BigInt64Array
+  | BigUint64Array
+
+interface TypedTarget<Typed extends TypedArray> {
+  set(source: Typed, offset: number): void
+}
+
+interface TypedArrayConstructor<Typed extends TypedArray> {
+  new (length: number): Typed & TypedTarget<Typed>
+}
+
 /**
  * Rebuilds the target from a source and a diff of that source.
  *
  * `apply(before, diff(before, after))` returns `after`. Deleted chunks are dropped, equal and
  * inserted chunks are concatenated in order. The source is only used to decide the result kind,
- * since the chunks already carry every value the target needs.
+ * since the chunks already carry every value the target needs: a string source returns a string,
+ * an array returns an array, and a typed array returns the same typed-array kind.
  *
  * @example
  * const changes = diff('Good dog', 'Bad dog')
@@ -17,10 +39,39 @@ export function apply<Element>(
   source: readonly Element[],
   changes: readonly DiffChunk<readonly Element[]>[],
 ): Element[]
-export function apply<Element>(
-  source: string | readonly Element[],
-  changes: readonly DiffChunk<string>[] | readonly DiffChunk<readonly Element[]>[],
-): string | Element[] {
+export function apply<Typed extends TypedArray>(
+  source: Typed,
+  changes: readonly DiffChunk<Typed>[],
+): Typed
+export function apply<Element, Typed extends TypedArray>(
+  source: string | readonly Element[] | Typed,
+  changes:
+    | readonly DiffChunk<string>[]
+    | readonly DiffChunk<readonly Element[]>[]
+    | readonly DiffChunk<Typed>[],
+): string | Element[] | Typed {
+  if (ArrayBuffer.isView(source)) {
+    const kept = (changes as readonly DiffChunk<Typed>[]).filter(
+      (change) => change.operation !== DELETE,
+    )
+    let length = 0
+
+    for (const change of kept) {
+      length += change.value.length
+    }
+
+    const typedSource = source as Typed
+    const target = new (typedSource.constructor as TypedArrayConstructor<Typed>)(length)
+    let offset = 0
+
+    for (const change of kept) {
+      target.set(change.value, offset)
+      offset += change.value.length
+    }
+
+    return target
+  }
+
   if (typeof source === 'string') {
     let target = ''
 

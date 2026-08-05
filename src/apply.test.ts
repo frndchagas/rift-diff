@@ -1,6 +1,19 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
-import { DELETE, EQUAL, INSERT, apply, diff, diffRanges, invert, invertRanges } from './index.js'
+import {
+  DELETE,
+  DiffError,
+  DiffLimitError,
+  DiffTimeoutError,
+  EQUAL,
+  INSERT,
+  apply,
+  diff,
+  diffRanges,
+  invert,
+  invertRanges,
+  materialize,
+} from './index.js'
 import { reconstructSequence } from './test-support.js'
 import type { DiffRange } from './index.js'
 
@@ -63,6 +76,73 @@ describe('apply with a coarse equality', () => {
     })
 
     expect(apply('Hello World', changes)).toBe('hello world')
+  })
+})
+
+describe('apply on typed arrays', () => {
+  it('returns the same typed-array kind', () => {
+    const before = Uint8Array.from([1, 2, 3, 4])
+    const after = Uint8Array.from([1, 9, 3, 4])
+    const changes = diff(before, after)
+    const applied = apply(before, changes)
+
+    expect(applied).toBeInstanceOf(Uint8Array)
+    expect([...applied]).toEqual([...after])
+    expect([...apply(after, invert(changes))]).toEqual([...before])
+  })
+
+  it('covers signed, unsigned, and float kinds', () => {
+    const ints = apply(
+      Int32Array.from([-5, 0, 7]),
+      diff(Int32Array.from([-5, 0, 7]), Int32Array.from([-5, 99, 7])),
+    )
+    expect(ints).toBeInstanceOf(Int32Array)
+    expect([...ints]).toEqual([-5, 99, 7])
+
+    const floats = apply(
+      Float64Array.from([1.5, 2.5]),
+      diff(Float64Array.from([1.5, 2.5]), Float64Array.from([1.5, 9.5])),
+    )
+    expect(floats).toBeInstanceOf(Float64Array)
+    expect([...floats]).toEqual([1.5, 9.5])
+
+    const grown = apply(Uint16Array.from([]), diff(Uint16Array.from([]), Uint16Array.from([7])))
+    expect(grown).toBeInstanceOf(Uint16Array)
+    expect([...grown]).toEqual([7])
+  })
+})
+
+describe('materialize', () => {
+  it('turns ranges into the same chunks diff returns', () => {
+    const before = 'Good dog'
+    const after = 'Bad dog'
+
+    expect(materialize(before, after, diffRanges(before, after))).toEqual(diff(before, after))
+  })
+
+  it('consumes the output of invertRanges and snapRangesToCodePoints', () => {
+    const before = 'Good dog'
+    const after = 'Bad dog'
+    const reversed = materialize(after, before, invertRanges(diffRanges(before, after)))
+
+    expect(apply(after, reversed)).toBe(before)
+
+    const snapped = materialize(
+      '\u{1D306}',
+      '\u{1D307}',
+      diffRanges('\u{1D306}', '\u{1D307}', { snapToCodePoints: true }),
+    )
+
+    expect(snapped.map((chunk) => chunk.value)).toEqual(['\u{1D306}', '\u{1D307}'])
+  })
+})
+
+describe('DiffError', () => {
+  it('catches both budget errors uniformly', () => {
+    expect(() => diff('abc', 'xyz', { maxEditDistance: 1 })).toThrow(DiffError)
+    expect(new DiffLimitError(5)).toBeInstanceOf(DiffError)
+    expect(new DiffTimeoutError(5)).toBeInstanceOf(DiffError)
+    expect(new DiffLimitError(5)).toBeInstanceOf(Error)
   })
 })
 

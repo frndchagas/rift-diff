@@ -104,7 +104,7 @@ diff(rowsBefore, rowsAfter, { equals: (left, right) => left.id === right.id })
 diff(before, after, { maxEditDistance: 500 })
 
 // Apply and reverse
-import { apply, invert } from 'rift-diff'
+import { apply, invert, materialize } from 'rift-diff'
 
 const changes = diff('Good dog', 'Bad dog')
 apply('Good dog', changes) // 'Bad dog'
@@ -149,8 +149,6 @@ for all seventeen scenarios, both runtimes, memory, and Ubuntu x86-64 live in
 - **There is no default work limit.** Exact Myers is quadratic in the worst case: two fully
   dissimilar 60 KB strings take about 52 seconds with no options set. For untrusted or unbounded
   input, always pass `timeBudgetMilliseconds`, `maxEditDistance`, or both.
-- `apply` covers strings and arrays. A diff of two typed arrays has no `apply` overload; convert
-  with `Array.from` first, or rebuild from `diffRanges`.
 - With a custom `equals` coarser than identity, equal chunks carry the target's values, so
   `apply(before, diff(before, after))` is exact but `apply(after, invert(...))` returns to the
   source only up to that equality. Use `diffRanges` when you need both sides.
