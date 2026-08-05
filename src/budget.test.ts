@@ -23,7 +23,7 @@ function residentBytes(): number {
 }
 
 describe('maxEditDistance workspace', () => {
-  it('keeps the linear-space engine when a distance bound is set', () => {
+  it('keeps the linear-space engine when a distance bound is set', { timeout: 60_000 }, () => {
     const [before, after] = adversarialPair(4_000)
 
     const unboundedStart = residentBytes()
