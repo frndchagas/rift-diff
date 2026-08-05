@@ -29,6 +29,12 @@ interface MyersSplit {
   readonly afterIndex: number
 }
 
+interface MyersSplitSuspension {
+  readonly resumeFrom: number
+}
+
+type MyersSplitOutcome = MyersSplit | MyersSplitSuspension | undefined
+
 type LinearWorkItem = DiffWorkItem | RangeWorkItem
 
 type IndexEquality = (beforeIndex: number, afterIndex: number) => boolean
@@ -592,7 +598,7 @@ function calculateLinearSpaceMyersRanges(
       continue
     }
 
-    const split = findMyersSplit(
+    const outcome = findMyersSplit(
       middleBeforeStart,
       middleBeforeEnd,
       middleAfterStart,
@@ -603,7 +609,15 @@ function calculateLinearSpaceMyersRanges(
       splitDistanceLimit,
       maxEditDistance,
       budget,
+      0,
+      Number.POSITIVE_INFINITY,
     )
+
+    if (outcome && 'resumeFrom' in outcome) {
+      throw new Error('Myers bisect suspended without a layer limit')
+    }
+
+    const split = outcome
 
     if (!split) {
       appendForwardRange(
@@ -694,7 +708,9 @@ function findMyersSplit(
   splitDistanceLimit: number,
   maxEditDistance: number | undefined,
   budget: TimeBudget | undefined,
-): MyersSplit | undefined {
+  resumeFrom: number,
+  layerLimit: number,
+): MyersSplitOutcome {
   const beforeLength = beforeEnd - beforeStart
   const afterLength = afterEnd - afterStart
   const maximumDistance = Math.ceil((beforeLength + afterLength) / 2)
@@ -702,13 +718,20 @@ function findMyersSplit(
   const vectorLength = 2 * maximumDistance + 3
   const delta = beforeLength - afterLength
   const overlapsOnForwardPass = delta % 2 !== 0
+  const suspendAt = resumeFrom + layerLimit
 
-  forward.fill(-1, 0, vectorLength)
-  reverse.fill(-1, 0, vectorLength)
-  forward[offset + 1] = 0
-  reverse[offset + 1] = 0
+  if (resumeFrom === 0) {
+    forward.fill(-1, 0, vectorLength)
+    reverse.fill(-1, 0, vectorLength)
+    forward[offset + 1] = 0
+    reverse[offset + 1] = 0
+  }
 
-  for (let distance = 0; distance < maximumDistance; distance += 1) {
+  for (let distance = resumeFrom; distance < maximumDistance; distance += 1) {
+    if (distance >= suspendAt) {
+      return { resumeFrom: distance }
+    }
+
     if (distance > splitDistanceLimit && maxEditDistance !== undefined) {
       throw new DiffLimitError(maxEditDistance)
     }
