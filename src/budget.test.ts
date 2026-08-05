@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DiffTimeoutError, diff, diffRanges } from './index.js'
+import { DiffLimitError, DiffTimeoutError, diff, diffRanges } from './index.js'
 import { editDistance, minimumInsertDeleteDistance, reconstruct } from './test-support.js'
 
 function adversarialPair(size: number): [string, string] {
@@ -17,6 +17,42 @@ function adversarialPair(size: number): [string, string] {
 
   return [before, after]
 }
+
+function residentBytes(): number {
+  return process.memoryUsage().rss
+}
+
+describe('maxEditDistance workspace', () => {
+  it('keeps the linear-space engine when a distance bound is set', () => {
+    const [before, after] = adversarialPair(4_000)
+
+    const unboundedStart = residentBytes()
+    diffRanges(before, after)
+    const unboundedGrowth = residentBytes() - unboundedStart
+
+    const boundedStart = residentBytes()
+    try {
+      diffRanges(before, after, { maxEditDistance: 8_000 })
+    } catch {
+      // a bound below the true distance is fine here; the point is the workspace
+    }
+    const boundedGrowth = residentBytes() - boundedStart
+
+    expect(boundedGrowth).toBeLessThan(Math.max(unboundedGrowth, 16 * 1024 * 1024) * 4)
+  })
+
+  it('stays exact at the boundary on inputs that reach the linear engine', () => {
+    const [before, after] = adversarialPair(400)
+    const trueDistance = editDistance(diffRanges(before, after))
+
+    expect(editDistance(diffRanges(before, after, { maxEditDistance: trueDistance }))).toBe(
+      trueDistance,
+    )
+    expect(() => diffRanges(before, after, { maxEditDistance: trueDistance - 1 })).toThrow(
+      DiffLimitError,
+    )
+  })
+})
 
 describe('timeBudgetMilliseconds', () => {
   it('reports instead of degrading when the budget elapses', () => {

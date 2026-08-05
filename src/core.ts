@@ -132,13 +132,25 @@ export function diffRanges<Element>(
     ranges.push(createRange(EQUAL, beforeMiddleEnd, before.length, afterMiddleEnd, after.length))
   }
 
+  if (
+    options?.snapToCodePoints === true &&
+    typeof before === 'string' &&
+    typeof after === 'string'
+  ) {
+    return snapRangesToCodePoints(before, after, ranges)
+  }
+
   return ranges
 }
 
-function createTimeBudget(milliseconds: number): TimeBudget {
+export function validateTimeBudget(milliseconds: number): void {
   if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
     throw new RangeError('timeBudgetMilliseconds must be a positive finite number')
   }
+}
+
+function createTimeBudget(milliseconds: number): TimeBudget {
+  validateTimeBudget(milliseconds)
 
   return { deadline: performance.now() + milliseconds, milliseconds }
 }
@@ -311,24 +323,11 @@ function calculateMyersRanges(
   maxEditDistance: number | undefined,
   budget: TimeBudget | undefined,
 ): MutableDiffRange[] {
-  if (maxEditDistance !== undefined) {
-    const ranges = calculateTraceMyersRanges(
-      beforeStart,
-      beforeEnd,
-      afterStart,
-      afterEnd,
-      equalsAt,
-      maxEditDistance,
-      Number.POSITIVE_INFINITY,
-      Number.POSITIVE_INFINITY,
-      budget,
-    )
-
-    if (!ranges) {
-      throw new Error('Bounded Myers unexpectedly exceeded an unlimited trace workspace')
-    }
-
-    return ranges
+  if (
+    maxEditDistance !== undefined &&
+    Math.abs(beforeEnd - beforeStart - (afterEnd - afterStart)) > maxEditDistance
+  ) {
+    throw new DiffLimitError(maxEditDistance)
   }
 
   const tracedRanges = calculateTraceMyersRanges(
@@ -337,16 +336,42 @@ function calculateMyersRanges(
     afterStart,
     afterEnd,
     equalsAt,
-    undefined,
+    maxEditDistance,
     TRACE_DISTANCE_LIMIT,
     TRACE_WORKSPACE_LIMIT_BYTES,
     budget,
   )
 
-  return (
-    tracedRanges ??
-    calculateLinearSpaceMyersRanges(beforeStart, beforeEnd, afterStart, afterEnd, equalsAt, budget)
+  if (tracedRanges) {
+    return tracedRanges
+  }
+
+  const linearRanges = calculateLinearSpaceMyersRanges(
+    beforeStart,
+    beforeEnd,
+    afterStart,
+    afterEnd,
+    equalsAt,
+    maxEditDistance,
+    budget,
   )
+
+  if (maxEditDistance !== undefined) {
+    let distance = 0
+
+    for (const range of linearRanges) {
+      distance +=
+        range.operation === DELETE
+          ? range.beforeEnd - range.beforeStart
+          : range.operation === INSERT
+            ? range.afterEnd - range.afterStart
+            : 0
+    }
+
+    assertDistanceWithinLimit(distance, maxEditDistance)
+  }
+
+  return linearRanges
 }
 
 function calculateTraceMyersRanges(
@@ -443,8 +468,11 @@ function calculateLinearSpaceMyersRanges(
   afterStart: number,
   afterEnd: number,
   equalsAt: IndexEquality,
+  maxEditDistance: number | undefined,
   budget: TimeBudget | undefined,
 ): MutableDiffRange[] {
+  const splitDistanceLimit =
+    maxEditDistance === undefined ? Number.POSITIVE_INFINITY : Math.ceil(maxEditDistance / 2) + 1
   const ranges: MutableDiffRange[] = []
   const work: LinearWorkItem[] = [{ kind: 'diff', beforeStart, beforeEnd, afterStart, afterEnd }]
   const workspaceLength = beforeEnd - beforeStart + (afterEnd - afterStart) + 4
@@ -548,7 +576,7 @@ function calculateLinearSpaceMyersRanges(
         middleAfterStart,
         middleAfterEnd,
         equalsAt,
-        undefined,
+        maxEditDistance,
         Number.POSITIVE_INFINITY,
         Number.POSITIVE_INFINITY,
         budget,
@@ -572,6 +600,8 @@ function calculateLinearSpaceMyersRanges(
       equalsAt,
       forwardWorkspace,
       reverseWorkspace,
+      splitDistanceLimit,
+      maxEditDistance,
       budget,
     )
 
@@ -621,6 +651,8 @@ function findMyersSplit(
   equalsAt: IndexEquality,
   forward: Int32Array,
   reverse: Int32Array,
+  splitDistanceLimit: number,
+  maxEditDistance: number | undefined,
   budget: TimeBudget | undefined,
 ): MyersSplit | undefined {
   const beforeLength = beforeEnd - beforeStart
@@ -637,6 +669,10 @@ function findMyersSplit(
   reverse[offset + 1] = 0
 
   for (let distance = 0; distance < maximumDistance; distance += 1) {
+    if (distance > splitDistanceLimit && maxEditDistance !== undefined) {
+      throw new DiffLimitError(maxEditDistance)
+    }
+
     if ((distance & 63) === 0) {
       assertWithinBudget(budget)
     }

@@ -37,7 +37,9 @@ export function apply<Element>(
 
   for (const change of changes as readonly DiffChunk<readonly Element[]>[]) {
     if (change.operation !== DELETE) {
-      target.push(...change.value)
+      for (const element of change.value) {
+        target.push(element)
+      }
     }
   }
 

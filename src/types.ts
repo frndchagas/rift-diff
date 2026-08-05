@@ -26,23 +26,23 @@ export interface DiffOptions<Element> {
   /**
    * Element comparison. Defaults to `Object.is`, so equal-position `NaN`s compare equal and `-0`
    * differs from `0`. Pass `(left, right) => left === right` for the semantics other diff
-   * libraries use, which is also faster on V8 for numeric sequences. Strings ignore this option
-   * and compare UTF-16 code units.
+   * libraries use, which is also faster on V8 for numeric sequences. Strings honor this option
+   * too, comparing one UTF-16 code unit at a time; omitting it selects a faster code-unit path.
    */
-  equals?: (before: Element, after: Element) => boolean
+  equals?: ((before: Element, after: Element) => boolean) | undefined
   /**
    * Maximum edit distance to spend before giving up. When the true minimum exceeds it, the call
    * throws {@link DiffLimitError} instead of returning a worse script. Must be a non-negative
    * safe integer.
    */
-  maxEditDistance?: number
+  maxEditDistance?: number | undefined
   /**
    * Wall-clock budget in milliseconds. When the engine is still searching after it elapses, the
    * call throws {@link DiffTimeoutError} rather than degrading the result. Checked at coarse
    * intervals, so the actual stop can overshoot slightly. Must be a positive finite number.
    * Omitting it costs nothing: no clock is read.
    */
-  timeBudgetMilliseconds?: number
+  timeBudgetMilliseconds?: number | undefined
   /**
    * Keeps range boundaries off the middle of a surrogate pair, so every range is well-formed text
    * on its own rather than only after concatenation. Applies to string inputs; other sequences
@@ -50,7 +50,7 @@ export interface DiffOptions<Element> {
    * affected boundary, which is why it is opt-in: it trades the unconstrained minimum for a
    * script that is minimal among those respecting code points.
    */
-  snapToCodePoints?: boolean
+  snapToCodePoints?: boolean | undefined
 }
 
 /**

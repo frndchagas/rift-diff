@@ -1,4 +1,4 @@
-import { diffRanges, validateMaxEditDistance } from './core.js'
+import { diffRanges, validateMaxEditDistance, validateTimeBudget } from './core.js'
 import { EQUAL, INSERT } from './types.js'
 import type { DiffChunk, DiffOptions, Sliceable } from './types.js'
 
@@ -24,9 +24,14 @@ export function diff<Element, Slice>(
 ): DiffChunk<Slice>[] {
   if (before.length === after.length && before === after && options?.equals === undefined) {
     const maxEditDistance = options?.maxEditDistance
+    const timeBudgetMilliseconds = options?.timeBudgetMilliseconds
 
     if (maxEditDistance !== undefined) {
       validateMaxEditDistance(maxEditDistance)
+    }
+
+    if (timeBudgetMilliseconds !== undefined) {
+      validateTimeBudget(timeBudgetMilliseconds)
     }
 
     return before.length === 0 ? [] : [{ operation: EQUAL, value: before.slice(0, before.length) }]
