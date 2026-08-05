@@ -8,18 +8,48 @@ output, and reproducible performance.
 
 ## What makes it different
 
-- **Guaranteed minimal output.** Every result is a shortest insert/delete script, verified against
-  a dynamic-programming oracle on thousands of generated inputs. Some fast incumbents use
-  heuristics that usually — but not always — produce the minimum.
-- **Correct element equality.** Generic sequences compare with `Object.is`, so equal-position
-  `NaN`s are equal and `-0` differs from `0`. Incumbents compare with `===`, which reports false
-  edits for `NaN`.
-- **Ranges, not copies.** `diffRanges` returns indexes into the original inputs, so callers can
-  render or encode changes without materializing slices.
-- **Predictable memory.** Large adversarial inputs use linear-space reconstruction instead of
-  retaining the full Myers trace.
-- **Strings, arrays, and typed arrays** through one API, with an optional custom equality.
-- Zero runtime dependencies, no native code, no WASM. About 2.9 KB gzipped, tree-shakeable.
+Each point below answers a problem users are actively filing against existing JavaScript diff
+libraries.
+
+- **It never hangs without telling you.** `maxEditDistance` bounds the work and throws
+  `DiffLimitError` instead of silently returning a worse result. Long-running diffs with no bound
+  and no signal are a decade-old complaint elsewhere (jsdiff [#79], [#353], fast-myers-diff
+  [#18], diff-match-patch [#78], where a timeout "silently degrades" the output).
+- **Predictable memory.** Linear-space reconstruction instead of retaining the full Myers trace,
+  and `diffRanges` returns indexes rather than materializing a large result array. Memory
+  blowups and OOM on large inputs are open issues elsewhere (jsdiff [#396], fast-diff [#23]).
+- **Guaranteed minimal, deterministic output.** Every result is a shortest insert/delete script,
+  verified against a dynamic-programming oracle. Elsewhere, adding one trailing character can turn
+  a 7-item diff into 9 (fast-myers-diff [#17]), and identical inputs can produce different chunk
+  counts on different platforms (diff-match-patch [#121]).
+- **Real generic sequences.** Strings, arrays, typed arrays, and custom equality through one API.
+  Libraries that diff non-text by mapping tokens to characters inherit a 65,536-token ceiling that
+  silently corrupts output past it (diff-match-patch [#54]).
+- **Indexes, not just copies.** `diffRanges` gives positions into the original inputs; the
+  `indexOf` workaround people are told to use breaks on repeated substrings
+  (diff-match-patch [#51], jsdiff [#91]).
+- **Apply and invert included.** A diff you cannot apply or reverse is half a feature
+  (fast-diff [#24], jsdiff [#95], [#629]).
+- **No patch parser, deliberately.** The unified-diff parser and fuzzy patch applier are where the
+  CVE-shaped bugs live in this ecosystem (ReDoS, quadratic blowups). Not shipping one removes the
+  entire class.
+- Zero runtime dependencies, no native code, no WASM, no install scripts. About 3.0 KB gzipped,
+  tree-shakeable, TypeScript-native.
+
+[#79]: https://github.com/kpdecker/jsdiff/issues/79
+[#353]: https://github.com/kpdecker/jsdiff/issues/353
+[#396]: https://github.com/kpdecker/jsdiff/issues/396
+[#91]: https://github.com/kpdecker/jsdiff/issues/91
+[#95]: https://github.com/kpdecker/jsdiff/issues/95
+[#629]: https://github.com/kpdecker/jsdiff/issues/629
+[#18]: https://github.com/gliese1337/fast-myers-diff/issues/18
+[#17]: https://github.com/gliese1337/fast-myers-diff/issues/17
+[#23]: https://github.com/jhchen/fast-diff/issues/23
+[#24]: https://github.com/jhchen/fast-diff/issues/24
+[#78]: https://github.com/google/diff-match-patch/issues/78
+[#121]: https://github.com/google/diff-match-patch/issues/121
+[#54]: https://github.com/google/diff-match-patch/issues/54
+[#51]: https://github.com/google/diff-match-patch/issues/51
 
 ## Usage
 
@@ -47,7 +77,18 @@ diff(rowsBefore, rowsAfter, { equals: (left, right) => left.id === right.id })
 
 // Bounded work: throws DiffLimitError when the minimum exceeds the budget
 diff(before, after, { maxEditDistance: 500 })
+
+// Apply and reverse
+import { apply, invert } from 'rift-diff'
+
+const changes = diff('Good dog', 'Bad dog')
+apply('Good dog', changes) // 'Bad dog'
+apply('Bad dog', invert(changes)) // 'Good dog'
 ```
+
+Element equality defaults to `Object.is`, so equal-position `NaN`s compare equal and `-0` differs
+from `0`. Pass `equals: (left, right) => left === right` for the semantics other libraries use,
+which is also faster on V8 for numeric arrays.
 
 `operation` is `-1` (delete), `0` (equal), or `1` (insert), matching the `fast-diff` convention.
 The exported `DELETE`, `EQUAL`, and `INSERT` constants are the readable spelling.
@@ -77,6 +118,15 @@ measurements, and the escape hatches are recorded in [RFC 0001](docs/rfc-0001-en
 Conclusions never transfer between runtimes: leaders differ by scenario and by engine. Full tables
 for all sixteen scenarios, both runtimes, memory, and Ubuntu x86-64 live in
 [bench/results](bench/results/README.md), with every raw JSON committed.
+
+## Known limits
+
+- Positions are UTF-16 code units. A range boundary can therefore fall between the halves of a
+  surrogate pair when an edit lands mid-character. To diff by code point or by grapheme, tokenize
+  first and use the array API: `diff([...before], [...after])`, or `Intl.Segmenter` for graphemes.
+- No unified-diff parsing or fuzzy patch application, by design (see above).
+- No three-way merge, and no semantic grouping of nearby edits: the output is minimal, which is
+  not the same as human-pretty.
 
 ## Correctness
 

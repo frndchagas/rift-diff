@@ -21,6 +21,9 @@ Pre-1.0 and unpublished: the public API may still change without a major version
 - Test gauntlet: deterministic examples, seeded oracle fuzzing, property-based tests with
   shrinking, differential comparison against incumbents, a Unicode contract suite, a heavy fuzz
   suite in CI, and mutation testing.
+- `apply(source, changes)` rebuilds the target from a diff, and `invert(changes)` reverses one so
+  it walks back to the source; `invertRanges` does the same for the range API. Round trips in both
+  directions are property-tested for strings and arrays.
 - Informative Ubuntu x86-64 benchmark workflow.
 
 ### Performance

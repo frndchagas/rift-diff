@@ -131,6 +131,14 @@ two Node.js cells documented contract exceptions rather than gaps to close:
 An explicit non-minimal `readable` mode stays a possible post-1.0 addition, not a milestone
 requirement. Both exceptions carry committed raw evidence in `bench/results/`.
 
+## Companion operations
+
+`apply` and `invert` complete the round trip: a diff that cannot be applied or reversed is half a
+feature, and both fall directly out of the range model without touching the engine. They are
+deliberately the only post-processing shipped. Unified-diff parsing and fuzzy patch application
+stay out of scope, because that is where this ecosystem's denial-of-service and parsing
+vulnerabilities have concentrated; not shipping a parser removes the class instead of hardening it.
+
 ## Compatibility
 
 A future `rift-diff/compat/fast-diff` export will reproduce the `[-1 | 0 | 1, string][]` shape. Cursor
