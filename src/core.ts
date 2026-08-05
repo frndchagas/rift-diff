@@ -497,32 +497,34 @@ function calculateLinearSpaceMyersRanges(
     let middleBeforeEnd = item.beforeEnd
     let middleAfterEnd = item.afterEnd
 
-    while (
-      middleBeforeStart < middleBeforeEnd &&
-      middleAfterStart < middleAfterEnd &&
-      equalsAt(middleBeforeStart, middleAfterStart)
-    ) {
-      middleBeforeStart += 1
-      middleAfterStart += 1
-    }
+    const prefixLength = countCommonPrefix(
+      middleBeforeStart,
+      middleBeforeEnd,
+      middleAfterStart,
+      middleAfterEnd,
+      equalsAt,
+    )
 
-    if (middleBeforeStart > item.beforeStart) {
+    if (prefixLength > 0) {
+      middleBeforeStart += prefixLength
+      middleAfterStart += prefixLength
       appendForwardRange(
         ranges,
         createRange(EQUAL, item.beforeStart, middleBeforeStart, item.afterStart, middleAfterStart),
       )
     }
 
-    while (
-      middleBeforeStart < middleBeforeEnd &&
-      middleAfterStart < middleAfterEnd &&
-      equalsAt(middleBeforeEnd - 1, middleAfterEnd - 1)
-    ) {
-      middleBeforeEnd -= 1
-      middleAfterEnd -= 1
-    }
+    const suffixLength = countCommonSuffix(
+      middleBeforeStart,
+      middleBeforeEnd,
+      middleAfterStart,
+      middleAfterEnd,
+      equalsAt,
+    )
 
-    if (middleBeforeEnd < item.beforeEnd) {
+    if (suffixLength > 0) {
+      middleBeforeEnd -= suffixLength
+      middleAfterEnd -= suffixLength
       work.push({
         kind: 'range',
         range: createRange(EQUAL, middleBeforeEnd, item.beforeEnd, middleAfterEnd, item.afterEnd),
@@ -639,6 +641,46 @@ function calculateLinearSpaceMyersRanges(
   }
 
   return ranges
+}
+
+function countCommonPrefix(
+  beforeStart: number,
+  beforeEnd: number,
+  afterStart: number,
+  afterEnd: number,
+  equalsAt: IndexEquality,
+): number {
+  let beforeIndex = beforeStart
+  let afterIndex = afterStart
+
+  while (beforeIndex < beforeEnd && afterIndex < afterEnd && equalsAt(beforeIndex, afterIndex)) {
+    beforeIndex += 1
+    afterIndex += 1
+  }
+
+  return beforeIndex - beforeStart
+}
+
+function countCommonSuffix(
+  beforeStart: number,
+  beforeEnd: number,
+  afterStart: number,
+  afterEnd: number,
+  equalsAt: IndexEquality,
+): number {
+  let beforeIndex = beforeEnd
+  let afterIndex = afterEnd
+
+  while (
+    beforeIndex > beforeStart &&
+    afterIndex > afterStart &&
+    equalsAt(beforeIndex - 1, afterIndex - 1)
+  ) {
+    beforeIndex -= 1
+    afterIndex -= 1
+  }
+
+  return beforeEnd - beforeIndex
 }
 
 function findMyersSplit(
