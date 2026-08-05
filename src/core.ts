@@ -56,15 +56,25 @@ const TRACE_SUBPROBLEM_SIZE = 32
 const DEFAULT_SLICE_MILLISECONDS = 8
 const ASYNC_LAYER_LIMIT = 16
 
+interface ImmediateHost {
+  readonly setImmediate?: (callback: () => void) => void
+}
+
+const scheduleImmediately = (globalThis as ImmediateHost).setImmediate
+
 const scheduleNextSlice: () => Promise<void> =
-  typeof setImmediate === 'function'
+  typeof scheduleImmediately === 'function'
     ? () =>
         new Promise<void>((resolve) => {
-          setImmediate(resolve)
+          scheduleImmediately(() => {
+            resolve()
+          })
         })
     : () =>
         new Promise<void>((resolve) => {
-          setTimeout(resolve, 0)
+          setTimeout(() => {
+            resolve()
+          }, 0)
         })
 
 /**
