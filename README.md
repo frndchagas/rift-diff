@@ -190,6 +190,8 @@ empty range, and never two adjacent ranges carrying the same operation.
 - [Benchmark methodology](docs/benchmarking.md) — how results are produced and what invalidates
   them.
 - [Testing strategy](docs/testing.md) — the gauntlet and its policies.
+- [Choosing a diff library](docs/comparison.md) — honest comparison with the alternatives,
+  including where `rift-diff` loses.
 
 ## Development
 
