@@ -116,6 +116,21 @@ Every potentially expensive mode will support explicit limits:
 
 Exceeding a limit throws a specific error. Heuristic replacement must be explicitly requested.
 
+## Recorded milestone decision (2026-08-04)
+
+The maintainer resolved the first state-of-the-art milestone's remaining question by declaring
+two Node.js cells documented contract exceptions rather than gaps to close:
+
+- Real code file edit: the leading incumbent wins through diff-match-patch's half-match stage,
+  which is documented as potentially non-optimal. `rift-diff` guarantees minimality on every
+  input and does not adopt heuristic splitting in minimal mode.
+- Array of number tokens: leading incumbents compare elements with `===`, which treats
+  equal-position `NaN`s as edits. `rift-diff` keeps `Object.is` as the recorded default and pays
+  its measured V8 cost; the `equals` option remains the explicit escape hatch.
+
+An explicit non-minimal `readable` mode stays a possible post-1.0 addition, not a milestone
+requirement. Both exceptions carry committed raw evidence in `bench/results/`.
+
 ## Compatibility
 
 A future `rift-diff/compat/fast-diff` export will reproduce the `[-1 | 0 | 1, string][]` shape. Cursor

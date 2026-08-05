@@ -32,10 +32,16 @@ pre-anchoring tables.
 | Array of number tokens        |                21.0k | 2.31× behind `fast-myers-diff` |             40.9k | 1.28× behind `fast-myers-diff`     |
 | Typed array with sparse edits |                48.3k | within 6% of `fast-myers-diff` |            153.3k | leads 3.30×                        |
 
-Milestone target: fastest or within 10% of the leader in every scenario. Open Node.js cells:
-real code file edit (1.32×, half-match contract tradeoff) and array of number tokens (2.31×,
-`Object.is` contract tradeoff) — both are recorded contract decisions, and every kernel-only gap
-is now closed on Node.js. Bun trails in repetitive shifted text, real json, and number tokens.
+Milestone status: reached on 2026-08-04. Every kernel-only Node.js gap is closed — `rift-diff`
+is the fastest or within 10% of the leader in fourteen of sixteen scenarios — and the maintainer
+formally declared the two remaining cells documented contract exceptions (see RFC 0001): real
+code file edit (the leader's half-match does not guarantee minimality) and array of number tokens
+(leaders compare with `===`, dropping `NaN` correctness). Per-runtime reading: on Bun,
+`rift-diff` leads twelve of sixteen scenarios including equal short text, and trails in
+repetitive shifted text (JavaScriptCore per-character floor, documented), real json, and number
+tokens; Bun conclusions never transfer to Node.js or vice versa. Ubuntu x86-64 numbers are
+informative shared-runner evidence confirming the same shape. No claim of universal superiority
+is made: leaders vary by scenario and runtime, and every claim traces to committed raw data.
 
 ## Inlinable fast path: `821b16b13839`
 
