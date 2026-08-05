@@ -241,6 +241,12 @@ const scenarios: readonly Scenario[] = [
     after: `${paragraph.repeat(12)}${'New words. '}${paragraph.repeat(14)}${'Also changed. '}${paragraph.repeat(14)}`,
   },
   {
+    id: 'dispersed-wide',
+    name: 'wide middle, mid-distance edits',
+    before: paragraph.repeat(180),
+    after: `${paragraph.repeat(4)}INSERTED-ALPHA-${paragraph.repeat(172)}INSERTED-OMEGA${paragraph.repeat(4)}`,
+  },
+  {
     id: 'real-code',
     name: 'real code file edit',
     before: corpus.code.before,
