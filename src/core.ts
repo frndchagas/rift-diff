@@ -29,12 +29,6 @@ interface MyersSplit {
   readonly afterIndex: number
 }
 
-interface MyersSplitSuspension {
-  readonly resumeFrom: number
-}
-
-type MyersSplitOutcome = MyersSplit | MyersSplitSuspension | undefined
-
 type LinearWorkItem = DiffWorkItem | RangeWorkItem
 
 type IndexEquality = (beforeIndex: number, afterIndex: number) => boolean
@@ -61,6 +55,7 @@ const TRACE_DISTANCE_LIMIT = 32
 const TRACE_SUBPROBLEM_SIZE = 32
 const DEFAULT_SLICE_MILLISECONDS = 8
 const ASYNC_LAYER_LIMIT = 16
+const UNLIMITED_LAYERS = 0
 
 const scheduleNextSlice: () => Promise<void> =
   typeof setImmediate === 'function'
@@ -792,7 +787,7 @@ function* calculateLinearSpaceMyersRanges(
 ): RangeGenerator {
   const splitDistanceLimit =
     maxEditDistance === undefined ? Number.POSITIVE_INFINITY : Math.ceil(maxEditDistance / 2) + 1
-  const layerLimit = slice === undefined ? Number.POSITIVE_INFINITY : slice.layerLimit
+  const layerLimit = slice === undefined ? UNLIMITED_LAYERS : slice.layerLimit
   const ranges: MutableDiffRange[] = []
   const work: LinearWorkItem[] = [{ kind: 'diff', beforeStart, beforeEnd, afterStart, afterEnd }]
   const workspaceLength = beforeEnd - beforeStart + (afterEnd - afterStart) + 4
@@ -917,29 +912,19 @@ function* calculateLinearSpaceMyersRanges(
       continue
     }
 
-    let outcome = findMyersSplit(
-      middleBeforeStart,
-      middleBeforeEnd,
-      middleAfterStart,
-      middleAfterEnd,
-      equalsAt,
-      forwardWorkspace,
-      reverseWorkspace,
-      splitDistanceLimit,
-      maxEditDistance,
-      budget,
-      0,
-      layerLimit,
-    )
+    const maximumDistance = Math.ceil((beforeLength + afterLength) / 2)
+    let split: MyersSplit | undefined
+    let firstLayer = 0
 
-    while (outcome !== undefined && 'resumeFrom' in outcome) {
-      if (slice !== undefined && slice.expired()) {
-        yield
-      }
+    initializeMyersWorkspaces(forwardWorkspace, reverseWorkspace, maximumDistance)
 
-      assertWithinBudget(budget)
+    for (;;) {
+      const lastLayer =
+        layerLimit === UNLIMITED_LAYERS
+          ? maximumDistance
+          : Math.min(maximumDistance, firstLayer + layerLimit)
 
-      outcome = findMyersSplit(
+      split = findMyersSplit(
         middleBeforeStart,
         middleBeforeEnd,
         middleAfterStart,
@@ -950,12 +935,22 @@ function* calculateLinearSpaceMyersRanges(
         splitDistanceLimit,
         maxEditDistance,
         budget,
-        outcome.resumeFrom,
-        layerLimit,
+        firstLayer,
+        lastLayer,
       )
-    }
 
-    const split = outcome
+      if (split !== undefined || lastLayer >= maximumDistance) {
+        break
+      }
+
+      firstLayer = lastLayer
+
+      if (slice !== undefined && slice.expired()) {
+        yield
+      }
+
+      assertWithinBudget(budget)
+    }
 
     if (!split) {
       appendForwardRange(
@@ -1056,30 +1051,24 @@ function findMyersSplit(
   splitDistanceLimit: number,
   maxEditDistance: number | undefined,
   budget: TimeBudget | undefined,
-  resumeFrom: number,
-  layerLimit: number,
-): MyersSplitOutcome {
+  firstLayer: number,
+  lastLayer: number,
+): MyersSplit | undefined {
   const beforeLength = beforeEnd - beforeStart
   const afterLength = afterEnd - afterStart
   const maximumDistance = Math.ceil((beforeLength + afterLength) / 2)
   const offset = maximumDistance + 1
-  const vectorLength = 2 * maximumDistance + 3
   const delta = beforeLength - afterLength
   const overlapsOnForwardPass = delta % 2 !== 0
-  const suspendAt = resumeFrom + layerLimit
+  const vectorLength = 2 * maximumDistance + 3
+  const startLayer = firstLayer < 0 ? 0 : firstLayer
+  const endLayer = lastLayer > maximumDistance ? maximumDistance : lastLayer
 
-  if (resumeFrom === 0) {
-    forward.fill(-1, 0, vectorLength)
-    reverse.fill(-1, 0, vectorLength)
-    forward[offset + 1] = 0
-    reverse[offset + 1] = 0
+  if (forward.length < vectorLength || reverse.length < vectorLength) {
+    throw new Error('Myers bisect workspace is smaller than the frontier it must hold')
   }
 
-  for (let distance = resumeFrom; distance < maximumDistance; distance += 1) {
-    if (distance >= suspendAt) {
-      return { resumeFrom: distance }
-    }
-
+  for (let distance = startLayer; distance < endLayer; distance += 1) {
     if (distance > splitDistanceLimit && maxEditDistance !== undefined) {
       throw new DiffLimitError(maxEditDistance)
     }
@@ -1170,6 +1159,20 @@ function findMyersSplit(
   }
 
   return undefined
+}
+
+function initializeMyersWorkspaces(
+  forward: Int32Array,
+  reverse: Int32Array,
+  maximumDistance: number,
+): void {
+  const offset = maximumDistance + 1
+  const vectorLength = 2 * maximumDistance + 3
+
+  forward.fill(-1, 0, vectorLength)
+  reverse.fill(-1, 0, vectorLength)
+  forward[offset + 1] = 0
+  reverse[offset + 1] = 0
 }
 
 function appendSingleElementRanges(
