@@ -103,12 +103,17 @@ order-alternated repetitions on both runtimes, measured every cell inside the dr
 exception. `equal-short`, the gating cell named in the RFC, measured +0.5% and -0.4% on Node.js and
 +0.2% and -0.2% on Bun.
 
-The exception is **real prose, -3.4% on Node.js**, which does not reproduce on Bun (+1.2%). An A/A
-control on the same machine state resolves that cell to about ±1%, so it is a residual regression
-on V8 rather than drift, and it is recorded here rather than absorbed into the floor. The cause is
-structural: the linear driver is a generator, and V8 gives a generator body a heap-allocated
-register file that JSC does not. Removing it would mean maintaining a second, non-generator driver
-for the synchronous path — a trade to decide deliberately, not a defect to patch quietly.
+The exception is **real prose on Node.js**, which does not reproduce on Bun. An A/A control on the
+same machine state resolves that cell to about ±1%, so it is a residual regression on V8 rather
+than drift, and it is recorded here rather than absorbed into the floor.
+
+Its cause is **not** established. The generator driver was the recorded explanation and has since
+been refuted: a prototype giving the synchronous path a plain, non-generator driver measured -4.5%
+against the pre-RFC baseline where the shipped generator measured -4.2%, in the same period. The
+work matrix rules out the algorithm — comparisons, ranges, distances, allocations and splits are
+identical or slightly lower than before the RFC. It is code generation somewhere in the
+accumulated shape of the change, and it is recorded as open. Details in
+[exploratory/](exploratory/README.md).
 
 The RFC's literal design was narrowed by measurement. It called for three generator routers; a
 drained generator router measured +12.5 ns per call on Node.js and +9.1 ns on Bun even when it

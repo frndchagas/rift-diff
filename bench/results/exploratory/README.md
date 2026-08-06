@@ -376,3 +376,35 @@ forbids.
 Kept as `map`. Recorded because the lane comparison is a useful diagnostic that had not been read
 this way before: when an incumbent gap appears only in cheap cells, check materialization before
 the engine.
+
+## Refuted: the generator is not what real prose pays for (`d4ef784` era)
+
+- Date: 2026-08-06, Node.js 26.0.0, same machine as above
+
+RFC 0002 left real prose measuring a few percent slow on V8 and not on JSC, and the recorded
+explanation was the generator driver: V8 lowers a generator body into a resumable function with a
+heap-allocated register file, JSC does not. That explanation is wrong.
+
+A prototype gave the synchronous path its own plain, non-generator copy of the linear driver —
+the full B1 change, duplication and all. Measured against the pre-RFC baseline in the same period,
+fourteen order-alternated repetitions each:
+
+| Cell            | Plain driver (B1) | Generator driver (shipped) |
+| --------------- | ----------------: | -------------------------: |
+| real prose      |             -4.5% |                      -4.2% |
+| dispersed edits |             +2.6% |                      +1.8% |
+| real json       |             +3.2% |                      -0.6% |
+
+Removing the generator recovers nothing; it measured marginally worse. Both B1 and the continuation
+rewrite (B2) are therefore withdrawn — they would duplicate or restructure the most intricate part
+of the engine to buy zero.
+
+What the residual is, then, remains open. The work matrix rules out the algorithm: comparisons,
+emitted ranges, distances, allocations and splits are identical or slightly lower than before the
+RFC. So it is code generation somewhere in the accumulated shape of the change, not any single
+construct that has been isolated. It is recorded as an open residual rather than an explained one.
+
+The lesson is the one this file keeps repeating in different clothes: an explanation that fits the
+evidence is not the same as a tested one. "V8 penalises generator bodies" is true in general and
+was measured directly for a hot loop in the `ac4d4e8` entry — it simply is not what this cell is
+paying, and the only way to find that out was to build the fix and measure it before believing it.
