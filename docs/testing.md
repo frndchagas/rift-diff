@@ -10,16 +10,17 @@ inputs, fuzzing, and the rule that no bug is fixed until a test reproduces it.
 
 ## Layers
 
-| Layer                                    | File                       | Runs                        |
-| ---------------------------------------- | -------------------------- | --------------------------- |
-| Deterministic examples and edge cases    | `src/diff.test.ts`         | every `bun run test`        |
-| Seeded oracle fuzz (strings and arrays)  | `src/diff.test.ts`         | every `bun run test`        |
-| Property-based with shrinking            | `src/properties.test.ts`   | every `bun run test`        |
-| Differential vs incumbents               | `src/differential.test.ts` | every `bun run test`        |
-| Unicode contract                         | `src/unicode.test.ts`      | every `bun run test`        |
-| Heavy fuzz (7,000 pairs + unseeded runs) | `src/extended.test.ts`     | `bun run test:extended`, CI |
-| Async equivalence, abort, and slicing    | `src/async.test.ts`        | every `bun run test`        |
-| Package smoke (ESM and CJS artifacts)    | `scripts/smoke-*`          | every `bun run build`       |
+| Layer                                     | File                       | Runs                        |
+| ----------------------------------------- | -------------------------- | --------------------------- |
+| Deterministic examples and edge cases     | `src/diff.test.ts`         | every `bun run test`        |
+| Seeded oracle fuzz (strings and arrays)   | `src/diff.test.ts`         | every `bun run test`        |
+| Property-based with shrinking             | `src/properties.test.ts`   | every `bun run test`        |
+| Differential vs incumbents                | `src/differential.test.ts` | every `bun run test`        |
+| Unicode contract                          | `src/unicode.test.ts`      | every `bun run test`        |
+| Heavy fuzz (7,000 pairs + unseeded runs)  | `src/extended.test.ts`     | `bun run test:extended`, CI |
+| Async equivalence, abort, and slicing     | `src/async.test.ts`        | every `bun run test`        |
+| Large inputs vs a minimal-distance oracle | `src/large-inputs.test.ts` | every `bun run test`        |
+| Package smoke (ESM and CJS artifacts)     | `scripts/smoke-*`          | every `bun run build`       |
 
 ## What the properties assert
 
@@ -39,6 +40,27 @@ unseeded runs so repeated CI executions keep exploring new inputs.
   from the before side of equal ranges, so they match the target under the caller's equality,
   not necessarily by identity. The first `fast-check` run caught an over-strict assertion of
   this very contract with the shrunk counterexample `[[0], [3]]`.
+
+## Large inputs
+
+Every other oracle in this suite is O(n·m) dynamic programming, which caps the inputs it can check
+at a few hundred elements. That left the linear-space engine — the deepest and most intricate part
+of the engine, and the only one that runs past the trace probe's distance limit — validated for
+minimality only on small pairs.
+
+`src/large-inputs.test.ts` closes that by using `fast-myers-diff` as the oracle instead: it is an
+independent implementation that also guarantees minimality, and it costs about 0.3 ms on a
+realistic 5,000-element pair against 174 ms for the worst random one. Structured shapes (scattered
+edits, block insert, delete, move, rewritten middle, low alphabet) run at 1,000 and 3,000 elements,
+adversarial pairs at 600 and 1,200, plus length-imbalanced pairs up to 5,000; the extended run adds
+4,000, 8,000, and 2,400.
+
+Instrumentation confirmed the layer earns its place rather than re-testing the probe: eight of the
+twelve structured pairs enter the linear driver, with up to 252 `findMyersSplit` calls on a single
+diff, and the remaining four exercise the containment fast path. Every pair's distance exceeds the
+probe's limit of 32, which the test asserts so the layer cannot quietly decay into probe coverage.
+The async engine is checked at the same scale with a 0.05 ms slice, so the resumable kernel is
+driven through many real suspensions rather than the handful a small input produces.
 
 ## Differential suite
 
