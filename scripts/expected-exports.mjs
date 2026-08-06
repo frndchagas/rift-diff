@@ -8,6 +8,7 @@ export const expectedPublicExports = [
   'DiffTimeoutError',
   'apply',
   'diff',
+  'diffAsync',
   'diffRanges',
   'diffRangesAsync',
   'invert',

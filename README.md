@@ -111,17 +111,20 @@ apply('Good dog', changes) // 'Bad dog'
 apply('Bad dog', invert(changes)) // 'Good dog'
 
 // Cooperative and cancellable: yields the event loop between slices
-import { diffRangesAsync } from 'rift-diff'
+import { diffAsync, diffRangesAsync } from 'rift-diff'
 
 const controller = new AbortController()
-const ranges = await diffRangesAsync(before, after, {
+const chunks = await diffAsync(before, after, {
   signal: controller.signal,
   sliceMilliseconds: 8, // default; sits under a 60 Hz frame
 })
+
+// Zero-copy counterpart, same options
+const ranges = await diffRangesAsync(before, after, { signal: controller.signal })
 ```
 
-`diffRangesAsync` returns exactly what `diffRanges` returns for the same inputs and options — only
-the scheduling differs. Use it when a diff is large enough that holding the event loop would drop
+`diffAsync` and `diffRangesAsync` return exactly what `diff` and `diffRanges` return for the same
+inputs and options — only the scheduling differs. Use it when a diff is large enough that holding the event loop would drop
 frames or delay I/O, or when the caller needs to cancel. Aborting rejects with `DiffAbortError` and
 discards partial work: a partial script does not reconstruct the target, so returning one would let
 `apply` corrupt data. The signal is checked at slice boundaries, so cancellation latency is bounded

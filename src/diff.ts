@@ -1,6 +1,6 @@
-import { diffRanges, validateMaxEditDistance, validateTimeBudget } from './core.js'
+import { diffRanges, diffRangesAsync, validateMaxEditDistance, validateTimeBudget } from './core.js'
 import { DELETE, EQUAL } from './types.js'
-import type { DiffChunk, DiffOptions, DiffRange, Sliceable } from './types.js'
+import type { AsyncDiffOptions, DiffChunk, DiffOptions, DiffRange, Sliceable } from './types.js'
 
 /**
  * Computes a minimal edit script as materialized chunks, slicing the inputs at the boundaries the
@@ -43,6 +43,27 @@ export function diff<Element, Slice>(
   }
 
   return materializeRanges(before, after, options)
+}
+
+/**
+ * Computes the same chunks as {@link diff}, yielding the event loop between slices so a long diff
+ * neither blocks the loop nor ignores cancellation.
+ *
+ * The result is identical to `diff` for the same inputs and options; only the scheduling differs.
+ * This is the materializing counterpart of `diffRangesAsync`, and takes the same options: `signal`
+ * to cancel and `sliceMilliseconds` to bound how long the engine holds the loop.
+ *
+ * @throws {DiffLimitError} when `options.maxEditDistance` is smaller than the true minimum.
+ * @throws {DiffTimeoutError} when `options.timeBudgetMilliseconds` elapses.
+ * @throws {DiffAbortError} when `options.signal` aborts.
+ * @throws {RangeError} when an option is outside its documented domain.
+ */
+export async function diffAsync<Element, Slice>(
+  before: Sliceable<Element, Slice>,
+  after: Sliceable<Element, Slice>,
+  options?: AsyncDiffOptions<Element>,
+): Promise<DiffChunk<Slice>[]> {
+  return materialize(before, after, await diffRangesAsync(before, after, options))
 }
 
 /**

@@ -8,9 +8,11 @@ All notable changes to this project are documented here, following
 
 ### Added
 
-- `diffRangesAsync(before, after, options?)` computes the same minimal script as `diffRanges` while
+- `diffAsync(before, after, options?)` and `diffRangesAsync(before, after, options?)` compute the
+  same minimal script as `diff` and `diffRanges` while
   yielding the event loop between slices, so a long diff neither blocks the loop nor ignores
-  cancellation. `AsyncDiffOptions` adds `signal` and `sliceMilliseconds` (default 8, under a 60 Hz
+  cancellation. Both APIs have an asynchronous counterpart, so choosing to not block the event loop
+  never forces a move to the lower-level range API. `AsyncDiffOptions` adds `signal` and `sliceMilliseconds` (default 8, under a 60 Hz
   frame). Measured longest event-loop block tracks `sliceMilliseconds`, and wall-clock overhead
   against the synchronous path is inside ±5% on both runtimes.
 - `DiffAbortError`, thrown when the signal aborts. Partial work is discarded rather than returned:

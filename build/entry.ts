@@ -7,7 +7,11 @@ import {
   diffRanges as calculateDiffRanges,
   diffRangesAsync as calculateDiffRangesAsync,
 } from '../src/core.ts'
-import { diff as calculateDiff, materialize as materializeRangeScript } from '../src/diff.ts'
+import {
+  diff as calculateDiff,
+  diffAsync as calculateDiffAsync,
+  materialize as materializeRangeScript,
+} from '../src/diff.ts'
 import {
   DiffAbortError as DiffAbortedError,
   DiffError as DiffBaseError,
@@ -26,6 +30,7 @@ export const DELETE = DELETE_OPERATION
 export const EQUAL = EQUAL_OPERATION
 export const INSERT = INSERT_OPERATION
 export const diff = calculateDiff
+export const diffAsync = calculateDiffAsync
 export const materialize = materializeRangeScript
 export const diffRanges = calculateDiffRanges
 export const diffRangesAsync = calculateDiffRangesAsync

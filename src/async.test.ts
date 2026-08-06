@@ -3,6 +3,8 @@ import {
   DiffAbortError,
   DiffLimitError,
   DiffTimeoutError,
+  diff,
+  diffAsync,
   diffRanges,
   diffRangesAsync,
 } from './index.js'
@@ -125,6 +127,53 @@ describe('diffRangesAsync equivalence', () => {
 
     expect(await diffRangesAsync(value, value)).toEqual(diffRanges(value, value))
     expect(await diffRangesAsync('', '')).toEqual([])
+  })
+})
+
+describe('diffAsync', () => {
+  it('matches diff on deterministic pairs', async () => {
+    for (const [before, after] of deterministicPairs) {
+      expect(await diffAsync(before, after)).toEqual(diff(before, after))
+    }
+  })
+
+  it('matches diff across seeded random pairs and options', { timeout: 60_000 }, async () => {
+    const random = makeRandom(0xd1ff_a5c1)
+
+    for (let trial = 0; trial < 200; trial += 1) {
+      const alphabetSize = 2 + Math.floor(random() * 10)
+      const before = randomString(random, Math.floor(random() * 200), alphabetSize)
+      const after = randomString(random, Math.floor(random() * 200), alphabetSize)
+
+      expect(await diffAsync(before, after, { sliceMilliseconds: 0.01 })).toEqual(
+        diff(before, after),
+      )
+    }
+  })
+
+  it('materializes arrays and typed arrays like diff does', async () => {
+    const beforeArray = [1, 2, 3, 4, 5]
+    const afterArray = [1, 9, 3, 4, 5]
+
+    expect(await diffAsync(beforeArray, afterArray)).toEqual(diff(beforeArray, afterArray))
+
+    const beforeTyped = Uint32Array.from([1, 2, 3, 4, 5])
+    const afterTyped = Uint32Array.from([1, 9, 3, 4, 5])
+
+    expect(await diffAsync(beforeTyped, afterTyped)).toEqual(diff(beforeTyped, afterTyped))
+  })
+
+  it('propagates cancellation and budgets the same way', async () => {
+    const [before, after] = adversarialPair(3_000)
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(diffAsync(before, after, { signal: controller.signal })).rejects.toBeInstanceOf(
+      DiffAbortError,
+    )
+    await expect(diffAsync(before, after, { timeBudgetMilliseconds: 1 })).rejects.toBeInstanceOf(
+      DiffTimeoutError,
+    )
   })
 })
 
