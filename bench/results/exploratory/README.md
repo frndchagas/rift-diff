@@ -299,3 +299,39 @@ separate non-generator driver for the synchronous path.
 The method note: two of the five refuted hypotheses were plausible enough to have been adopted
 without measurement, and the real cause — an unconditional `fill` doubling as a range proof — is
 not something reading the diff would suggest. Bisect to the commit, then bisect inside it.
+
+## Refuted: a bidirectional probe would not close the Bun repetitive gap (`5250854` era)
+
+- Date: 2026-08-06, Bun 1.4.0 and Node.js 26.0.0, same machine as above
+
+The backlog carried "bidirectional probe for small distances" as the way to close repetitive
+shifted text on Bun (1.52x behind `fast-myers-diff`), on the recorded premise that the incumbent's
+bidirectional search wins there by scanning half the characters. The premise is false, and counting
+comparisons refutes it without timing anything.
+
+Instrumenting the engine's index comparator and passing `fast-myers-diff` an equivalent counting
+comparator, on the exact benchmark inputs:
+
+| Scenario           | rift-diff comparisons | `fast-myers-diff` comparisons | Ratio |
+| ------------------ | --------------------: | ----------------------------: | ----: |
+| Repetitive shift   |                 1,002 |                         2,006 | 0.50x |
+| Fully different    |                90,862 |                        90,601 | 1.00x |
+| Middle replacement |                     0 |                           903 |     — |
+
+`rift-diff` already does **half** the work in the cell it loses, and none at all in a cell it wins
+outright. A bidirectional probe would reduce a count that is already lower than the incumbent's.
+
+The cost is per comparison, not the number of them. Dividing the measured Bun cell by the counts
+gives roughly 5.5 ns per comparison for `rift-diff` against 1.8 ns for `fast-myers-diff`. Typed
+allocation is not the difference either: the scenario allocates two arrays totalling 2,948 bytes,
+about 320 ns at Bun's measured allocation cost, or six percent of the cell.
+
+This matches, and sharpens, the `cf67dc6` bisection: JSC runs snake scans inside the diagonal-loop
+shape at about 2 ns per character against 0.9 ns on V8, and that bisection already refuted
+allocation, rope, parameter, and closure causes. Taken together the gap is a runtime floor on the
+loop shape, not an algorithmic deficit, and it cannot be bought back by searching from both ends.
+The backlog item is withdrawn rather than deferred.
+
+The transferable part: when an incumbent wins, count the work both implementations actually do
+before designing an algorithm that does less of it. The comparison counter cost minutes and
+retired a medium-risk change to the middle of the engine.

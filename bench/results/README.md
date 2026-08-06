@@ -138,6 +138,12 @@ measurement with a 33.2% spread and did not survive a controlled test: an exact 
 whenever the length difference already exceeds the probe's limit, measured inside the drift floor
 on every scenario and was reverted. Details in [exploratory/](exploratory/README.md).
 
+A second recorded direction is also withdrawn: a bidirectional probe was going to close repetitive
+shifted text on Bun, on the premise that the incumbent wins there by scanning half the characters.
+Counting comparisons shows `rift-diff` already does half the incumbent's work in that cell and
+loses anyway, so the gap is a per-comparison runtime floor rather than an algorithmic deficit.
+Details in [exploratory/](exploratory/README.md).
+
 The previously recorded idea of seeding the linear engine with the probe's forward frontier is
 unsound as stated: the bidirectional middle snake needs forward and reverse advancing in lockstep,
 and seeding only the forward side breaks the balance that bounds recursion depth. A correct
