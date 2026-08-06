@@ -1,6 +1,6 @@
 {
   "name": "rift-diff",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A zero-dependency, TypeScript-first diff engine built around ranges and predictable resource limits.",
   "keywords": [
     "array-diff",

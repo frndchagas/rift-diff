@@ -4,17 +4,21 @@ All notable changes to this project are documented here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-08-06
+
+Adds a cooperative asynchronous API, so a large diff no longer forces a choice between blocking the
+event loop and not diffing at all.
 
 ### Added
 
-- `diffAsync(before, after, options?)` and `diffRangesAsync(before, after, options?)` compute the
-  same minimal script as `diff` and `diffRanges` while
-  yielding the event loop between slices, so a long diff neither blocks the loop nor ignores
-  cancellation. Both APIs have an asynchronous counterpart, so choosing to not block the event loop
-  never forces a move to the lower-level range API. `AsyncDiffOptions` adds `signal` and `sliceMilliseconds` (default 8, under a 60 Hz
-  frame). Measured longest event-loop block tracks `sliceMilliseconds`, and wall-clock overhead
-  against the synchronous path is inside ±5% on both runtimes.
+- `diffAsync(before, after, options?)` and `diffRangesAsync(before, after, options?)` produce
+  exactly what `diff` and `diffRanges` produce for the same inputs and options, yielding the event
+  loop between slices instead of holding it. Both levels of the API have an asynchronous form, so
+  choosing not to block never forces a move to the lower-level range API.
+- `AsyncDiffOptions` adds `signal` for cancellation and `sliceMilliseconds` (default 8, under a
+  60 Hz frame) to bound how long the engine holds the loop. Measured on adversarial inputs, the
+  longest event-loop block tracks `sliceMilliseconds` — 1.83 ms at a 1 ms slice, 9.03 ms at 8 ms —
+  and cancellation lands within a slice.
 - `DiffAbortError`, thrown when the signal aborts. Partial work is discarded rather than returned:
   a partial script does not reconstruct the target, so passing one to `apply` would corrupt data.
 
@@ -23,17 +27,37 @@ All notable changes to this project are documented here, following
 - `diffStringRanges` no longer appends the Myers result with `push(...ranges)`. `2269f75` fixed
   this on the generic path but left it on the string path, which is the one every string diff
   without a custom `equals` takes; V8 rejects a spread above roughly 125k arguments.
+- The package artifacts export the full public surface. `build/entry.ts` lists exports by hand and
+  the smoke tests only checked the ones that existed when they were written, so a new export could
+  ship invisible to consumers. Both now verify the whole surface against a shared list.
 - The mutation gauntlet runs again. It had been failing its dry run since `c2f700a`, whose
   workspace test costs about 120 ms normally but 17.9 s under Stryker's instrumentation, above
   vitest's default 5 s timeout.
 
 ### Performance
 
-- The synchronous path is unchanged within the drift floor on both runtimes, with one recorded
-  exception: real prose measures about -3.4% on Node.js and does not reproduce on Bun. See
+- The trace probe reuses its buffers instead of allocating them per call. A 4,000-element pair went
+  from 998 allocations and 2.4 MB of churn to **4 allocations and 71 KB**, and the count no longer
+  grows with input size. Peak live memory is unchanged; this is allocation pressure only.
+- The linear driver's unreachable prefix trim is gone. It could never fire — 20,000 random pairs
+  produced 202,321 suffix-trim hits and zero prefix-trim hits — and removing it left output
+  byte-identical across 33,200 comparisons. It bought no speed, and is recorded as a cleanup.
+- The synchronous path is otherwise unchanged within the drift floor on both runtimes, with one
+  exception: **real prose measures a few percent slow on Node.js and not on Bun.** The cause is not
+  established. The generator driver was the recorded explanation and has been refuted by building
+  the fix and measuring it. The engine demonstrably does no more work — comparisons, ranges,
+  distances, allocations and splits are identical or lower than before. Recorded as open in
   [bench/results/README.md](bench/results/README.md).
-- The linear driver's prefix trim is gone. It could never fire, and removing it changed no output
-  across 33,200 comparisons — but it also bought no speed (-1.5% to +1.3%, inside the floor).
+
+### Testing
+
+- Minimality is now verified at the scale the linear-space engine actually runs at, using
+  `fast-myers-diff` as an independent minimal-distance oracle instead of the O(n·m) dynamic
+  programming one that capped inputs at a few hundred elements.
+- A work matrix records exact element-comparison, range and distance counts per scenario. The
+  counts are deterministic and identical across runtimes, so a change in how much work the engine
+  does is a diff rather than a measurement — including route changes that leave output identical,
+  which no output-based oracle can see.
 
 ## [0.2.0] - 2026-08-05
 
@@ -113,3 +137,4 @@ budget was not enforced during affix trimming.
 
 [0.1.0]: https://github.com/frndchagas/rift-diff/releases/tag/v0.1.0
 [0.2.0]: https://github.com/frndchagas/rift-diff/releases/tag/v0.2.0
+[0.3.0]: https://github.com/frndchagas/rift-diff/releases/tag/v0.3.0
