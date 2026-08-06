@@ -9,33 +9,33 @@ here.
 
 ## Distance to the leader
 
-From the latest official run (`74973bc1aa59`, 2026-08-04, Apple M4 Max, macOS 26.5 arm64,
+From the latest official run (`4da310cd2c27`, 2026-08-05, Apple M4 Max, macOS 26.5 arm64,
 Node.js 26.0.0 and Bun 1.4.0). Materialized output; the leader varies by scenario. `leads` means
 `rift-diff` was the fastest measured implementation in that cell.
 
 | Scenario                      | Node.js 26 | Node.js standing               | Bun 1.4 | Bun standing                   |
 | ----------------------------- | ---------: | ------------------------------ | ------: | ------------------------------ |
-| Equal short text              |    142.88M | parity with `fast-diff`        | 114.90M | leads 1.04×                    |
-| Single append                 |     19.59M | leads 1.83×                    |  16.85M | leads 1.86×                    |
-| Middle replacement            |      2.39M | leads 1.23×                    |   2.21M | leads 1.49×                    |
-| Large text, small insert      |      1.53M | leads 1.17×                    |   1.46M | leads 1.55×                    |
-| Dispersed replacements        |     105.7k | leads 4.69×                    |   42.6k | leads 1.54×                    |
-| Length-imbalanced containment |     11.36M | leads 1.40×                    |   6.77M | leads 1.37×                    |
-| Repetitive shifted text       |     463.0k | leads 2.17×                    |  176.8k | 1.57× behind, JSC floor        |
-| Fully different text          |       2.7k | leads 1.18×                    |    3.2k | leads 1.63×                    |
-| Mid-distance clustered edits  |      1.46M | leads 1.19×                    |   1.41M | leads 1.37×                    |
-| Wide middle, mid-distance     |     380.8k | leads 1.04×                    |  381.7k | leads 1.08×                    |
-| Real code file edit           |       2.5k | 1.32× behind, contract         |    3.1k | leads 1.62×                    |
-| Real json config edit         |      29.4k | leads 1.19×                    |   21.9k | 1.27× behind `fast-myers-diff` |
-| Real log stream update        |      1.77M | leads 1.47×                    |   1.75M | leads 1.69×                    |
-| Real prose revision           |      15.7k | leads 1.14×                    |   13.2k | leads 1.27×                    |
-| Array of code lines           |     435.4k | within 9% of `fast-myers-diff` |  492.0k | leads 1.31×                    |
-| Array of number tokens        |      20.6k | 2.43× behind, contract         |   42.4k | 1.26× behind                   |
-| Typed array with sparse edits |      48.0k | within 8% of `fast-myers-diff` |  154.5k | leads 3.26×                    |
+| Equal short text              |    141.24M | within 1% of `fast-diff`       | 113.54M | leads 1.07×                    |
+| Single append                 |     18.29M | leads 1.83×                    |  13.28M | leads 1.45×                    |
+| Middle replacement            |      2.37M | leads 1.24×                    |   2.23M | leads 1.54×                    |
+| Large text, small insert      |      1.50M | leads 1.14×                    |   1.44M | leads 1.58×                    |
+| Dispersed replacements        |     105.3k | leads 4.63×                    |   41.9k | leads 1.54×                    |
+| Length-imbalanced containment |     11.74M | leads 1.55×                    |   7.27M | leads 1.50×                    |
+| Repetitive shifted text       |     475.7k | leads 2.30×                    |  180.1k | 1.52× behind, JSC floor        |
+| Fully different text          |       2.7k | leads 1.19×                    |    3.3k | leads 1.68×                    |
+| Mid-distance clustered edits  |      1.45M | leads 1.20×                    |   1.37M | leads 1.39×                    |
+| Wide middle, mid-distance     |     379.4k | leads 1.04×                    |  387.6k | leads 1.09×                    |
+| Real code file edit           |       2.6k | 1.27× behind, contract         |    3.4k | leads 1.78×                    |
+| Real json config edit         |      27.9k | leads 1.18×                    |   21.7k | 1.26× behind `fast-myers-diff` |
+| Real log stream update        |      1.76M | leads 1.49×                    |   1.71M | leads 1.70×                    |
+| Real prose revision           |      15.0k | leads 1.10×                    |   12.9k | leads 1.23×                    |
+| Array of code lines           |     448.9k | within 6% of `fast-myers-diff` |  480.9k | leads 1.29×                    |
+| Array of number tokens        |      21.5k | 2.33× behind, contract         |   41.2k | 1.29× behind                   |
+| Typed array with sparse edits |      48.0k | within 4% of `fast-myers-diff` |  156.3k | leads 3.36×                    |
 
-Milestone status: reached on 2026-08-04. `rift-diff` is the fastest or within 10% of the leader in
-fifteen of seventeen scenarios on Node.js. The two exceptions are recorded contract decisions in
-[RFC 0001](../../docs/rfc-0001-engine.md), not gaps to close:
+Milestone status: held after RFC 0002. `rift-diff` is the fastest or within 10% of the leader in
+fifteen of seventeen scenarios on Node.js. The two exceptions are the same recorded contract
+decisions in [RFC 0001](../../docs/rfc-0001-engine.md), not gaps to close:
 
 - **Real code file edit**: the leader splits with diff-match-patch's half-match, documented as
   potentially non-optimal. `rift-diff` guarantees a minimal script on every input.
@@ -43,8 +43,13 @@ fifteen of seventeen scenarios on Node.js. The two exceptions are recorded contr
   edits. `rift-diff` defaults to `Object.is` and pays its measured V8 cost, with `equals` as the
   explicit escape hatch.
 
-Per-runtime reading, never transferable: on Bun, `rift-diff` leads thirteen of seventeen and
-trails in repetitive shifted text (a JavaScriptCore per-character floor documented in
+Two cells moved against the previous official run and both are RFC 0002's recorded cost on V8:
+real prose from 15.7k to 15.0k (its lead narrowing from 1.14× to 1.10×) and real json from 29.4k
+to 27.9k. Both are the generator-driver residual measured directly in the interleaved A/B below;
+neither changes a standing. On Bun the same cells are unchanged or better.
+
+Per-runtime reading, never transferable: on Bun, `rift-diff` leads fourteen of seventeen and trails
+in repetitive shifted text (a JavaScriptCore per-character floor documented in
 [state-of-the-art](../../docs/state-of-the-art.md)), real json, and number tokens. No claim of
 universal superiority is made — leaders differ by scenario and by engine.
 
@@ -61,7 +66,7 @@ here as the record. Prune again whenever this directory exceeds roughly twenty r
 | `anchored-baseline-macos-arm64-{node,bun}` | Canonical reference after output anchoring      |
 | `inline-fast-path-macos-arm64-{node,bun}`  | Equal-input parity with `fast-diff` on Node.js  |
 | `mid-distance-macos-arm64-{node,bun}`      | The 21-32 distance band scenario                |
-| `wide-guard-macos-arm64-{node,bun}`        | Latest full matrix; source of the table above   |
+| `rfc-0002-macos-arm64-{node,bun}`          | Latest full matrix; source of the table above   |
 | `ubuntu-informative-*-x86_64-{node,bun}`   | Platform evidence on x86-64 Linux               |
 | `exploratory/`                             | Refuted hypotheses and methodology measurements |
 
@@ -88,6 +93,7 @@ result against the immediately preceding `rift-diff` result on the same harness 
 | Inlinable fast path                 | Equal short text +50.1% on Node.js, reaching parity with `fast-diff`       |
 | Mid-distance and wide-middle guards | Benchmark surface: the 21-32 distance band, narrow and wide middles        |
 | Cooperative async engine (RFC 0002) | Synchronous path neutral except real prose -3.4% on V8; see below          |
+| Prefix trim removal                 | Dead branch removed; measured -1.5% to +1.3%, i.e. no throughput change    |
 
 ### RFC 0002: what the async engine cost the synchronous path
 
