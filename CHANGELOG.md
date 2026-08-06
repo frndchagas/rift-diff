@@ -30,6 +30,8 @@ All notable changes to this project are documented here, following
 - The synchronous path is unchanged within the drift floor on both runtimes, with one recorded
   exception: real prose measures about -3.4% on Node.js and does not reproduce on Bun. See
   [bench/results/README.md](bench/results/README.md).
+- The linear driver's prefix trim is gone. It could never fire, and removing it changed no output
+  across 33,200 comparisons — but it also bought no speed (-1.5% to +1.3%, inside the floor).
 
 ## [0.2.0] - 2026-08-05
 
