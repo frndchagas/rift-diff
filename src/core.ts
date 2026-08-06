@@ -820,27 +820,10 @@ function* calculateLinearSpaceMyersRanges(
       continue
     }
 
-    let middleBeforeStart = item.beforeStart
-    let middleAfterStart = item.afterStart
+    const middleBeforeStart = item.beforeStart
+    const middleAfterStart = item.afterStart
     let middleBeforeEnd = item.beforeEnd
     let middleAfterEnd = item.afterEnd
-
-    const prefixLength = countCommonPrefix(
-      middleBeforeStart,
-      middleBeforeEnd,
-      middleAfterStart,
-      middleAfterEnd,
-      equalsAt,
-    )
-
-    if (prefixLength > 0) {
-      middleBeforeStart += prefixLength
-      middleAfterStart += prefixLength
-      appendForwardRange(
-        ranges,
-        createRange(EQUAL, item.beforeStart, middleBeforeStart, item.afterStart, middleAfterStart),
-      )
-    }
 
     const suffixLength = countCommonSuffix(
       middleBeforeStart,
@@ -1019,24 +1002,6 @@ function drainRanges(generator: RangeGenerator): MutableDiffRange[] {
   }
 
   return step.value
-}
-
-function countCommonPrefix(
-  beforeStart: number,
-  beforeEnd: number,
-  afterStart: number,
-  afterEnd: number,
-  equalsAt: IndexEquality,
-): number {
-  let beforeIndex = beforeStart
-  let afterIndex = afterStart
-
-  while (beforeIndex < beforeEnd && afterIndex < afterEnd && equalsAt(beforeIndex, afterIndex)) {
-    beforeIndex += 1
-    afterIndex += 1
-  }
-
-  return beforeIndex - beforeStart
 }
 
 function countCommonSuffix(
