@@ -335,3 +335,44 @@ The backlog item is withdrawn rather than deferred.
 The transferable part: when an incumbent wins, count the work both implementations actually do
 before designing an algorithm that does less of it. The comparison counter cost minutes and
 retired a medium-risk change to the middle of the engine.
+
+## Refuted: materialization cannot be made cheaper on JSC without paying on V8 (`f74f7d7` era)
+
+- Date: 2026-08-06, Node.js 26.0.0 and Bun 1.4.0, same machine as above
+
+Comparing the two measurement lanes in the official matrix isolates materialization from the
+engine, and it exposes an asymmetry the per-scenario tables hide. The engine itself is as fast on
+Bun as on Node.js — length-imbalanced containment costs 71 ns of range work on Bun against 67 ns on
+Node.js, real log 455 ns against 531 ns — but turning ranges into chunks costs far more on JSC:
+
+| Scenario                      | Node.js ranges → materialized | Bun ranges → materialized |
+| ----------------------------- | ----------------------------- | ------------------------- |
+| Single append                 | 39 → 55 ns (+28%)             | 38 → 75 ns (+50%)         |
+| Length-imbalanced containment | 67 → 85 ns (+22%)             | 71 → 137 ns (+49%)        |
+| Middle replacement            | 383 → 422 ns (+9%)            | 346 → 449 ns (+23%)       |
+| Real log stream update        | 531 → 567 ns (+6%)            | 455 → 585 ns (+22%)       |
+
+Heavy cells hide this completely (fully different, real code and real json all sit at about 0%),
+which is why it had never surfaced: materialization only matters where the diff is cheap.
+
+`materialize` builds its result with `Array.prototype.map`. Replacing that with a preallocated
+index loop, measured over six order-alternated repetitions per variant in isolated processes:
+
+| Ranges | Node.js map → preallocated loop | Bun map → preallocated loop |
+| -----: | ------------------------------- | --------------------------- |
+|      2 | 13.1 → 17.5 ns (+33.8%)         | 21.1 → 17.1 ns (-19.2%)     |
+|      3 | 17.9 → 25.1 ns (+39.9%)         | 28.7 → 24.8 ns (-13.6%)     |
+|      5 | 28.8 → 42.5 ns (+47.4%)         | 43.4 → 39.5 ns (-9.0%)      |
+|     11 | 58.3 → 90.2 ns (+54.7%)         | 89.6 → 87.4 ns (-2.4%)      |
+|     40 | 206.1 → 331.1 ns (+60.6%)       | 322.4 → 318.0 ns (-1.3%)    |
+
+A push loop is worse than both on Node.js (+113% to +136%) and worse than `map` on Bun above five
+elements. So the runtimes want opposite things: V8 optimizes `map` better than a hand-written loop
+by a wide margin, while JSC prefers the loop by a narrow one that shrinks as the array grows. The
+change would buy at most 19% on Bun in the smallest case and cost up to 61% on Node.js, the primary
+profiling runtime. Branching on the runtime would be platform-specific code, which the project
+forbids.
+
+Kept as `map`. Recorded because the lane comparison is a useful diagnostic that had not been read
+this way before: when an incumbent gap appears only in cheap cells, check materialization before
+the engine.
