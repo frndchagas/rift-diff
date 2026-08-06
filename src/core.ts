@@ -38,6 +38,18 @@ interface TimeBudget {
   readonly milliseconds: number
 }
 
+interface TraceWorkspace {
+  readonly frontier: Int32Array
+  readonly layers: Int32Array
+}
+
+function createTraceWorkspace(): TraceWorkspace {
+  return {
+    frontier: new Int32Array(TRACE_MAX_STRIDE),
+    layers: new Int32Array(TRACE_MAX_LAYERS * TRACE_MAX_STRIDE),
+  }
+}
+
 interface SliceController {
   readonly layerLimit: number
   expired: () => boolean
@@ -53,6 +65,11 @@ function assertWithinBudget(budget: TimeBudget | undefined): void {
 
 const TRACE_DISTANCE_LIMIT = 32
 const TRACE_SUBPROBLEM_SIZE = 32
+// The probe never runs past TRACE_DISTANCE_LIMIT layers: the top-level call caps it there, and the
+// linear driver only calls it for subproblems of at most TRACE_SUBPROBLEM_SIZE elements. So one
+// workspace of the worst-case shape serves every call and can be reused for a whole diff.
+const TRACE_MAX_STRIDE = 2 * TRACE_DISTANCE_LIMIT + 3
+const TRACE_MAX_LAYERS = TRACE_DISTANCE_LIMIT + 1
 const DEFAULT_SLICE_MILLISECONDS = 8
 const ASYNC_LAYER_LIMIT = 16
 
@@ -589,6 +606,7 @@ function calculateMyersRanges(
 ): MutableDiffRange[] {
   assertMyersLengthWithinLimit(beforeEnd - beforeStart, afterEnd - afterStart, maxEditDistance)
 
+  const workspace = createTraceWorkspace()
   const tracedRanges = calculateTraceMyersRanges(
     beforeStart,
     beforeEnd,
@@ -598,6 +616,7 @@ function calculateMyersRanges(
     maxEditDistance,
     TRACE_DISTANCE_LIMIT,
     budget,
+    workspace,
   )
 
   if (tracedRanges) {
@@ -614,6 +633,7 @@ function calculateMyersRanges(
       maxEditDistance,
       budget,
       undefined,
+      workspace,
     ),
   )
 
@@ -666,6 +686,7 @@ function* calculateMyersRangesGenerator(
 ): RangeGenerator {
   assertMyersLengthWithinLimit(beforeEnd - beforeStart, afterEnd - afterStart, maxEditDistance)
 
+  const workspace = createTraceWorkspace()
   const tracedRanges = calculateTraceMyersRanges(
     beforeStart,
     beforeEnd,
@@ -675,6 +696,7 @@ function* calculateMyersRangesGenerator(
     maxEditDistance,
     TRACE_DISTANCE_LIMIT,
     budget,
+    workspace,
   )
 
   if (tracedRanges) {
@@ -690,6 +712,7 @@ function* calculateMyersRangesGenerator(
     maxEditDistance,
     budget,
     slice,
+    workspace,
   )
 
   assertScriptDistanceWithinLimit(linearRanges, maxEditDistance)
@@ -706,20 +729,25 @@ function calculateTraceMyersRanges(
   maxEditDistance: number | undefined,
   traceDistanceLimit: number,
   budget: TimeBudget | undefined,
+  workspace: TraceWorkspace,
 ): MutableDiffRange[] | undefined {
   const beforeLength = beforeEnd - beforeStart
   const afterLength = afterEnd - afterStart
   const maximumDistance = beforeLength + afterLength
   const distanceLimit = Math.min(maxEditDistance ?? maximumDistance, maximumDistance)
   const frontierDistanceLimit = Math.min(distanceLimit, traceDistanceLimit)
+
+  if (frontierDistanceLimit > TRACE_DISTANCE_LIMIT) {
+    return undefined
+  }
+
   const offset = frontierDistanceLimit + 1
   const stride = 2 * frontierDistanceLimit + 3
-  const frontier = new Int32Array(stride)
-  let layerCapacity = Math.min(frontierDistanceLimit, 8) + 2
-  let traceBuffer = new Int32Array(layerCapacity * stride)
+  const frontier = workspace.frontier
+  const traceBuffer = workspace.layers
   let usedLayers = 0
 
-  frontier.fill(-1)
+  frontier.fill(-1, 0, stride)
   frontier[offset + 1] = 0
 
   for (let distance = 0; distance <= distanceLimit; distance += 1) {
@@ -729,14 +757,12 @@ function calculateTraceMyersRanges(
 
     assertWithinBudget(budget)
 
-    if (usedLayers === layerCapacity) {
-      layerCapacity = Math.min(layerCapacity * 4, distanceLimit + 1)
-      const grownBuffer = new Int32Array(layerCapacity * stride)
-      grownBuffer.set(traceBuffer)
-      traceBuffer = grownBuffer
+    const layerOffset = usedLayers * stride
+
+    for (let index = 0; index < stride; index += 1) {
+      traceBuffer[layerOffset + index] = frontier[index]!
     }
 
-    traceBuffer.set(frontier, usedLayers * stride)
     usedLayers += 1
 
     for (let diagonal = -distance; diagonal <= distance; diagonal += 2) {
@@ -793,6 +819,7 @@ function* calculateLinearSpaceMyersRanges(
   maxEditDistance: number | undefined,
   budget: TimeBudget | undefined,
   slice: SliceController | undefined,
+  traceWorkspace: TraceWorkspace,
 ): RangeGenerator {
   const splitDistanceLimit =
     maxEditDistance === undefined ? Number.POSITIVE_INFINITY : Math.ceil(maxEditDistance / 2) + 1
@@ -891,6 +918,7 @@ function* calculateLinearSpaceMyersRanges(
         maxEditDistance,
         Number.POSITIVE_INFINITY,
         budget,
+        traceWorkspace,
       )
 
       if (!tracedRanges) {
