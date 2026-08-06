@@ -20,6 +20,7 @@ inputs, fuzzing, and the rule that no bug is fixed until a test reproduces it.
 | Heavy fuzz (7,000 pairs + unseeded runs)  | `src/extended.test.ts`     | `bun run test:extended`, CI |
 | Async equivalence, abort, and slicing     | `src/async.test.ts`        | every `bun run test`        |
 | Large inputs vs a minimal-distance oracle | `src/large-inputs.test.ts` | every `bun run test`        |
+| Work matrix: exact operation counts       | `src/work.test.ts`         | every `bun run test`        |
 | Package smoke (ESM and CJS artifacts)     | `scripts/smoke-*`          | every `bun run build`       |
 
 ## What the properties assert
@@ -61,6 +62,37 @@ diff, and the remaining four exercise the containment fast path. Every pair's di
 probe's limit of 32, which the test asserts so the layer cannot quietly decay into probe coverage.
 The async engine is checked at the same scale with a 0.05 ms slice, so the resumable kernel is
 driven through many real suspensions rather than the handful a small input produces.
+
+## Work matrix
+
+Every other layer asks whether the output is right. This one asks how much work produced it, and
+it is the only layer that can see a change which alters the route without altering the result.
+
+`src/work.test.ts` records, per scenario, the exact number of element comparisons the engine
+performs, the number of ranges it emits, and the edit distance. Sequences take their comparator
+from the caller, so counting comparisons needs no instrumentation in the engine and costs nothing
+in production. The counts are deterministic: identical on Node.js and Bun, identical across
+repetitions, and unmoved by machine load. A diff is therefore a fact, not a measurement.
+
+That matters because wall-clock benchmarks cannot answer this question on a busy machine. During
+RFC 0002 a between-run delta was mistaken for an implementation effect three separate times. The
+work matrix separates the two questions the project keeps conflating: **what the engine does**,
+answered here exactly, and **what that costs**, answered by `docs/benchmarking.md` with all the
+drift caveats that come with a clock.
+
+Fault injection sets its value. Lowering the trace probe's distance limit from 32 to 20 changes
+which route the engine takes and leaves every output identical: the deterministic, property,
+differential, large-input, and async suites all pass, thirty-nine tests between them, while the
+work matrix fails five of eleven and prints the deltas — dispersed edits 10,396 → 9,755
+comparisons, containment 95,999 → 95,665.
+
+That is exactly the class the mutation section below calls route-equivalent and accepts as
+unkillable by the oracles. It is no longer unkillable, and the mutation score should rise as a
+result; that prediction is untested and stated as one.
+
+Updating the table is a deliberate act. A change that moves these numbers is a real algorithmic
+change: accept it by recording the new counts in the same commit, with the reason, or treat it as
+a regression.
 
 ## Differential suite
 

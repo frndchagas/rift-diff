@@ -122,6 +122,21 @@ Informative Ubuntu x86-64 runs come from `.github/workflows/bench.yml`, dispatch
 informative context, never baselines for accepting optimizations. Bun 1.3.14 reports an invalid
 constant `maxRSS` on Linux, so Bun memory numbers from that platform are excluded.
 
+## What this cannot answer
+
+A clock measures what work costs, never how much work there is, and on a loaded machine it can
+fail to resolve either. Before reaching for a benchmark, ask which question is actually being
+asked. "Did this change make the engine do more?" is answered exactly, and for free, by the work
+matrix in `src/work.test.ts`: element comparisons, emitted ranges, and edit distance per scenario,
+deterministic across runtimes and immune to load. Only "what does that work cost?" needs a
+benchmark, with everything below applied.
+
+Counting also settles questions a benchmark answers badly. Two examples from this repository: the
+bidirectional probe was withdrawn after counting showed `rift-diff` already performs half the
+incumbent's comparisons in the cell it loses, and RFC 0002's real-prose regression was shown to be
+code generation rather than algorithm because the engine's comparison, allocation and split counts
+were unchanged.
+
 ## Between-run drift and small deltas
 
 Comparing a new run against a baseline JSON recorded earlier measures the implementation change
